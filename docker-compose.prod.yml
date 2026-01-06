@@ -1,0 +1,61 @@
+services:
+
+  frontend:
+    container_name: frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: dev 
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    env_file:
+      - '.env.dev'
+    environment:
+      - NODE_ENV=development
+
+  gateway:
+    image: nginx:alpine
+    container_name: gateway
+    restart: always
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - auth-service
+      - data-service
+
+  auth-service:
+    container_name: auth-service
+    build:
+      context: ./services/auth
+      target: dev
+    restart: always
+    expose:
+    - "3000"
+    volumes:
+      - ./services/auth:/app
+      - /app/node_modules
+      - /app/dist
+    env_file:
+      - '.env.dev'
+
+  data-service:
+    container_name: data-service
+    build:
+      context: ./services/data
+      target: dev
+    restart: always
+    expose:
+    - "3000"
+    volumes:
+      - ./services/data:/app
+      - /app/node_modules
+      - /app/dist
+    env_file:
+      - '.env.dev'
