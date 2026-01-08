@@ -1,11 +1,10 @@
 services:
-
   frontend:
     container_name: frontend
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      target: dev 
+      target: dev
     restart: always
     ports:
       - "3000:3000"
@@ -14,7 +13,7 @@ services:
       - /app/node_modules
       - /app/.next
     env_file:
-      - '.env.dev'
+      - ".env.dev"
     environment:
       - NODE_ENV=development
 
@@ -38,13 +37,15 @@ services:
     restart: always
     # ports: - "3001:3000"
     expose:
-    - "3000"
+      - "3000"
     volumes:
       - ./services/auth:/app
       - /app/node_modules
       - /app/dist
     env_file:
-      - '.env.dev'
+      - ".env.dev"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   data-service:
     container_name: data-service
@@ -54,10 +55,12 @@ services:
     restart: always
     # ports: - "3002:3000"
     expose:
-    - "3000"
+      - "3000"
     volumes:
       - ./services/data:/app
       - /app/node_modules
       - /app/dist
     env_file:
-      - '.env.dev'
+      - ".env.dev"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
