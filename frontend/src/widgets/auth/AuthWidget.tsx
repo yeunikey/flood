@@ -4,7 +4,7 @@ import { useAuth } from "./model/useAuth";
 
 function AuthWidget() {
 
-    const { type, setType, password, setPassword, email, setEmail } = useAuth();
+    const { type, setType, password, setPassword, login: email, setLogin: setEmail } = useAuth();
 
     return (
         <Grow in={true}>
@@ -17,7 +17,7 @@ function AuthWidget() {
                 </Typography>
 
                 <div className="flex flex-col gap-2 my-8">
-                    <TextField value={email} onChange={(e) => setEmail(e.target.value)} id="outlined-basic" label="Почта" variant="outlined" size="small" />
+                    <TextField value={email} onChange={(e) => setEmail(e.target.value)} id="outlined-basic" label="Логин" variant="outlined" size="small" />
                     <TextField value={password} onChange={(e) => setPassword(e.target.value)} id="outlined-basic" label="Пароль" variant="outlined" type='password' size="small" />
                 </div>
 

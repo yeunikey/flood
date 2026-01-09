@@ -8,7 +8,7 @@ import { handleCode } from "../model/authService";
 
 function CodeModal() {
     const [code, setCode] = useState('');
-    const { modal, setModal, email } = useAuth();
+    const { modal, setModal, login: email } = useAuth();
 
     return (
         <Modal
