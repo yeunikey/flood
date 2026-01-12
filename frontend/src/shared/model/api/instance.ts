@@ -12,6 +12,11 @@ export const api = xior.create({
   headers: defaultOptions
 });
 
+export const apiWithToken = xior.create({
+  baseURL: baseUrl,
+  headers: defaultOptions,
+});
+
 export const vapi = xior.create({
   baseURL: baseUrl
 }); 

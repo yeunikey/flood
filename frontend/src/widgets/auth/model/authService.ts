@@ -5,16 +5,16 @@ import { ApiResponse, AuthResponse, User } from "@/types";
 import Cookies from "js-cookie";
 
 const handleLogin = async () => {
-  const { login: email, password } = useAuth.getState();
+  const { login: login, password } = useAuth.getState();
 
-  if (email == "" || password == "") {
+  if (login == "" || password == "") {
     toast.error("Заполните все данные");
     return;
   }
 
   await api
     .post<ApiResponse<{ token: string; user: User }>>("v1/auth/login", {
-      email: email,
+      login: login,
       password: password,
     })
     .then((response) => {
