@@ -27,7 +27,9 @@ export class AuthController {
   @UseGuards(AuthGuard)
   @Get('profile')
   async profile(@CurrentUser() jwtUser: JwtUser) {
-    return await this.userService.findByIdSafe(jwtUser.id);
+    return this.userService.toSafeUser(
+      await this.userService.findByIdSafe(jwtUser.id),
+    );
   }
 
   @Post('register')
@@ -53,7 +55,7 @@ export class AuthController {
         token: await this.jwtService.signAsync(
           this.userService.toSafeUser(user),
         ),
-        user: user,
+        user: this.userService.toSafeUser(user),
       },
     };
   }
@@ -86,7 +88,7 @@ export class AuthController {
       statusCode: 200,
       data: {
         token: await this.jwtService.signAsync(payload),
-        user: user,
+        user: this.userService.toSafeUser(user),
       },
     };
   }

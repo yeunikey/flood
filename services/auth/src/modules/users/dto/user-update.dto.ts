@@ -19,7 +19,7 @@ export class UserUpdateDto {
 
   @IsOptional()
   @IsEmail()
-  email?: string; // если хочешь разрешить менять email
+  email?: string;
 
   @IsOptional()
   @IsString()

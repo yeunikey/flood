@@ -11,7 +11,7 @@ export class UserService {
     private readonly userRepository: Repository<User>,
   ) {}
 
-  toSafeUser(user: User) {
+  toSafeUser(user: User | null) {
     return {
       ...user,
       password: undefined,
