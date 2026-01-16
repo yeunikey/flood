@@ -19,7 +19,7 @@ export const useVariables = create<VariableState>((set) => ({
     fetchVariables: async (token: string) => {
         set({ isLoading: true });
 
-        await api.get<ApiResponse<Variable[]>>("/variables", {
+        await api.get<ApiResponse<Variable[]>>("data/variables", {
             headers: { Authorization: "Bearer " + token },
         })
             .then(({ data }) => {

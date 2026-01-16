@@ -14,7 +14,6 @@ export class SitesService {
     private siteTypeRepo: Repository<SiteType>,
   ) {}
 
-  // ---------- SiteType ----------
   async findAllSiteTypes() {
     return {
       statusCode: HttpStatus.OK,
@@ -48,7 +47,6 @@ export class SitesService {
     };
   }
 
-  // ---------- Site ----------
   async findAllSites() {
     return {
       statusCode: HttpStatus.OK,
@@ -104,11 +102,9 @@ export class SitesService {
         continue;
       }
 
-      // проверяем есть ли сайт с таким кодом
       let site = await this.siteRepo.findOneBy({ code: siteData.code });
 
       if (site) {
-        // обновляем существующий
         site.name = siteData.name;
         site.longtitude = siteData.longtitude;
         site.latitude = siteData.latitude;
@@ -116,7 +112,6 @@ export class SitesService {
 
         site = await this.siteRepo.save(site);
       } else {
-        // создаём новый
         site = await this.siteRepo.save({
           code: siteData.code,
           name: siteData.name,

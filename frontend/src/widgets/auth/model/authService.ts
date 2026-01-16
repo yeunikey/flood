@@ -13,7 +13,7 @@ const handleLogin = async () => {
   }
 
   await api
-    .post<ApiResponse<{ token: string; user: User }>>("v1/auth/login", {
+    .post<ApiResponse<{ token: string; user: User }>>("auth/login", {
       login: login,
       password: password,
     })
@@ -40,7 +40,7 @@ const handleCreate = async () => {
   setModal(true);
 
   await api
-    .post<ApiResponse<AuthResponse>>("v1/auth/register", {
+    .post<ApiResponse<AuthResponse>>("auth/register", {
       user: {
         login: login,
         password: password,

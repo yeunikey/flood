@@ -12,7 +12,7 @@ import {
 import { DataService } from './data.service';
 import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
 
-@Controller('data')
+@Controller('')
 export class DataController {
   constructor(
     private readonly dataService: DataService,
@@ -28,7 +28,7 @@ export class DataController {
     };
   }
 
-  @Get('categories/sites')
+  @Get('category/sites')
   async getAllCategoriesWithSites() {
     const categories = await this.dataService.findAllCategories();
 
@@ -120,7 +120,7 @@ export class DataController {
     };
   }
 
-  @Get(':id')
+  @Get('datavalue/:id')
   async getById(@Param('id') id: number) {
     const result = await this.dataService.findById(id);
 

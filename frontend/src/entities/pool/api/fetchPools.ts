@@ -7,7 +7,7 @@ export const fetchPools = async (token: string) => {
 
     const { setPools } = usePools.getState();
 
-    await api.get<ApiResponse<Pool[]>>('/pools/', {
+    await api.get<ApiResponse<Pool[]>>('data/pools/', {
         headers: { Authorization: 'Bearer ' + token }
     })
         .then(({ data }) => {

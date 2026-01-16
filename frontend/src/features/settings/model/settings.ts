@@ -30,7 +30,7 @@ const changePassword = async (
         repeatPassword: repeatPassword
     }
 
-    await api.post('/auth/change-password', body, authHeader(token ?? ''))
+    await api.post('auth/change-password', body, authHeader(token ?? ''))
         .then((response) => {
 
             if (response.data.statusCode == 400) {
@@ -61,7 +61,7 @@ const changeImage = async (
         setFetching(true);
 
         const imageRes = await vapi.post<ApiResponse<SavedImage>>(
-            "/images/upload",
+            "data/images/upload",
             formData,
             {
                 headers: {
@@ -79,7 +79,7 @@ const changeImage = async (
         }
 
         const updateRes = await api.post<ApiResponse<User>>(
-            "/users/update",
+            "auth/users/update",
             {
                 "image": imageRes.data.data.id
             },

@@ -6,7 +6,7 @@ import { useSites } from "../model/useSites";
 export const fetchSites = async (token: string) => {
     const { setSites } = useSites.getState();
 
-    await api.get<ApiResponse<Site[]>>("/sites", {
+    await api.get<ApiResponse<Site[]>>("data/sites", {
         headers: { Authorization: "Bearer " + token },
     })
         .then(({ data }) => {

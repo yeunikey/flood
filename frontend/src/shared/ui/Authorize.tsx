@@ -28,7 +28,7 @@ function Authorize({ children }: AuthProps) {
     const token = String(Cookies.get("token"));
 
     await api
-      .get<ApiResponse<User>>("v1/auth/profile", {
+      .get<ApiResponse<User>>("auth/profile", {
         headers: {
           Authorization: "Bearer " + token,
         },

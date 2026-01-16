@@ -92,7 +92,7 @@ function UpdatePoolModal() {
             const newPools = pools.filter(p => p.id != editingPool.id);
             setPools(newPools);
 
-            await api.get(`/pools/delete?pool_id=${editingPool.id}`, {
+            await api.get(`data/pools/delete?pool_id=${editingPool.id}`, {
                 headers: {
                     Authorization: 'Bearer ' + token
                 }
@@ -119,7 +119,7 @@ function UpdatePoolModal() {
 
         try {
             await api.post(
-                `/pools/update?pool_id=${editingPool.id}`,
+                `data/pools/update?pool_id=${editingPool.id}`,
                 {
                     name,
                     geojson,

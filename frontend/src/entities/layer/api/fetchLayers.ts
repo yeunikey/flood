@@ -4,14 +4,13 @@ import { ApiResponse } from "@/types";
 import Layer from "../types/layer";
 
 export const fetchLayers = async (token: string) => {
+  const { setLayers } = useLayers.getState();
 
-    const { setLayers} = useLayers.getState();
-
-    await api.get<ApiResponse<Layer[]>>('/data/categories/sites', {
-        headers: { Authorization: 'Bearer ' + token }
+  await api
+    .get<ApiResponse<Layer[]>>("data/category/sites", {
+      headers: { Authorization: "Bearer " + token },
     })
-        .then(({ data }) => {
-            setLayers(data.data);
-        })
-
-}
+    .then(({ data }) => {
+      setLayers(data.data);
+    });
+};

@@ -19,7 +19,7 @@ export const useSitesTypes = create<SitesState>((set) => ({
     fetchSiteTypes: async (token: string) => {
         set({ isLoading: true });
 
-        await api.get<ApiResponse<SiteType[]>>("/sites/types", {
+        await api.get<ApiResponse<SiteType[]>>("data/sites/types", {
             headers: { Authorization: "Bearer " + token },
         })
             .then(({ data }) => {

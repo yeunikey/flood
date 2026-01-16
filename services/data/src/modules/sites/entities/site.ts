@@ -7,6 +7,7 @@ import {
 } from 'typeorm';
 
 import { SiteType } from './site_type';
+import { Pool } from 'src/modules/pools/entities/pool.entity';
 
 @Entity('site')
 export class Site {
@@ -28,4 +29,11 @@ export class Site {
 
   @Column('float')
   latitude: number;
+
+  @ManyToOne(() => Pool, (pool) => pool.sites, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'pool_id' })
+  pool: Pool | null;
 }

@@ -77,7 +77,7 @@ function CreatePoolModal() {
         setLoading(true);
         const payload = { name, geojson, siteIds: selectedSites, tileIds: selectedTiles };
 
-        const res = await api.post<ApiResponse<Pool>>('/pools/create', payload, {
+        const res = await api.post<ApiResponse<Pool>>('data/pools/create', payload, {
             headers: {
                 Authorization: "Bearer " + token
             }
