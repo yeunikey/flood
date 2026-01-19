@@ -64,3 +64,25 @@ services:
       - ".env.dev"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+
+  tiles-service:
+    container_name: tiles-service
+    build:
+      context: ./services/tiles
+      dockerfile: Dockerfile
+      target: dev
+    restart: always
+    expose:
+      - "3000"
+      - "8080"
+    volumes:
+      - ./services/tiles:/app
+      - /app/node_modules
+      - ./uploads:/app/uploads
+    env_file:
+      - ".env.dev"
+    environment:
+      - UPLOADS_PATH=/app/uploads
+      - TILESERVER_CONFIG_PATH=/app/uploads/tileserver-config
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

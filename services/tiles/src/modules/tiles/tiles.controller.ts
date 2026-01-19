@@ -1,104 +1,118 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { Controller, Post, UseInterceptors, UploadedFiles, Get, Body } from '@nestjs/common';
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+
+import {
+  Controller,
+  Post,
+  UseInterceptors,
+  UploadedFiles,
+  Get,
+  Body,
+  ValidationPipe,
+  UsePipes,
+} from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 import { TilesService } from './tiles.service';
-import { join } from 'path';
+import { join, extname } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { TileserverManagerService } from './tileserver.manager';
+import { Request } from 'express';
+import { IsOptional, IsString, IsUUID } from 'class-validator';
+import { Transform } from 'class-transformer';
 
-@Controller('tiles')
+// DTO с валидацией и трансформацией
+export class CreateTileDto {
+  @IsOptional()
+  @IsUUID('4', { message: 'tileUUID должен быть валидным UUID v4' })
+  tileUUID?: string;
+
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  name?: string;
+}
+
+// Интерфейс для Multer (так как req.body там еще any)
+interface MulterRequest extends Request {
+  body: Partial<CreateTileDto>;
+}
+
+@Controller('')
 export class TilesController {
-    constructor(
-        private readonly tilesService: TilesService,
-        private readonly tileserverManager: TileserverManagerService,
-    ) { }
+  constructor(
+    private readonly tilesService: TilesService,
+    private readonly tileserverManager: TileserverManagerService,
+  ) {}
 
-    @Post('upload')
-    @UseInterceptors(
-        FileFieldsInterceptor(
-            [
-                { name: 'geo', maxCount: 1 },
-                { name: 'mbtiles', maxCount: 1 },
-            ],
-            {
-                storage: diskStorage({
+  @Post('upload')
+  @UseInterceptors(
+    FileFieldsInterceptor([{ name: 'geo', maxCount: 1 }], {
+      storage: diskStorage({
+        destination: (req, file, cb) => {
+          const baseDir =
+            process.env.UPLOADS_PATH || join(process.cwd(), 'uploads');
+          const geoDir = join(baseDir, 'geo');
 
-                    destination: (req, file, cb) => {
-                        const baseDir = process.env.UPLOADS_PATH || join(__dirname, '..', '..', 'uploads');
+          if (!existsSync(geoDir)) mkdirSync(geoDir, { recursive: true });
 
-                        const geoDir = join(baseDir, 'geo');
-                        const mbDir = join(baseDir, 'mbtiles');
+          cb(null, geoDir);
+        },
+        filename: (req: MulterRequest, file, cb) => {
+          // Если UUID не пришел с фронта, генерируем его здесь
+          if (!req.body.tileUUID) {
+            req.body.tileUUID = uuidv4();
+          }
 
-                        // Создаём папки, если не существует
-                        [geoDir, mbDir].forEach(dir => {
-                            if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-                        });
+          const id = req.body.tileUUID;
+          const ext = extname(file.originalname) || '.json';
 
-                        if (file.fieldname === 'geo') cb(null, geoDir);
-                        else if (file.fieldname === 'mbtiles') cb(null, mbDir);
-                        else cb(new Error('Unknown fieldname'), '');
-                    },
-                    filename: (req, file, cb) => {
-                        if (!req.body.tileUUID) req.body.tileUUID = uuidv4();
-                        const id = req.body.tileUUID;
+          cb(null, `${id}${ext}`);
+        },
+      }),
+    }),
+  )
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
+  async upload(
+    @UploadedFiles() files: { geo?: Express.Multer.File[] },
+    @Body() body: CreateTileDto,
+  ) {
+    const id = body.tileUUID;
+    const geoFile = files.geo?.[0];
 
-                        const ext = file.fieldname;
-                        cb(null, `${id}.${ext}`);
-                    },
-                }),
-            },
-        ),
-    )
-    async upload(
-        @UploadedFiles() files: { geo?: Express.Multer.File[]; mbtiles?: Express.Multer.File[] },
-        @Body() body: any,
-    ) {
-
-        const {
-            name,
-            type,
-            colorMode,
-            selectedVariable,
-            solidColor,
-            gradientColorA,
-            gradientColorB,
-        } = body;
-
-        const id = (files.geo?.[0]?.filename || files.mbtiles?.[0]?.filename)?.split('.')[0] || uuidv4();
-        const geoFile = files.geo?.[0]?.path;
-        const mbtilesFile = files.mbtiles?.[0]?.path;
-
-        if (!geoFile || !mbtilesFile) {
-            throw new Error('Both geo and mbtiles files must be uploaded');
-        }
-
-        const tile = await this.tilesService.saveTile({
-            id,
-            name,
-            type,
-            geoPath: geoFile,
-            mbtilesPath: mbtilesFile,
-            colorMode,
-            selectedVariable,
-            solidColor,
-            gradientColorA,
-            gradientColorB,
-        });
-
-        this.tileserverManager.restartTileserver();
-
-        return tile;
+    if (!geoFile) {
+      throw new Error('GeoJSON file is required');
     }
 
-    @Get()
-    async getAll() {
-        return {
-            statusCode: 200,
-            data: await this.tilesService.getAllTiles(),
-        };
+    if (!id) {
+      throw new Error('Internal Server Error: UUID was not generated');
     }
 
+    // Передаем только нужные поля
+    const tile = await this.tilesService.createFromGeoJson(
+      { path: geoFile.path, filename: geoFile.filename },
+      {
+        id,
+        name: body.name,
+      },
+    );
+
+    this.tileserverManager.restartTileserver();
+
+    return {
+      status: 'success',
+      uuid: tile.id,
+      message: 'Tile processed and saved',
+    };
+  }
+
+  @Get()
+  async getAll() {
+    return {
+      statusCode: 200,
+      data: await this.tilesService.getAllTiles(),
+    };
+  }
 }

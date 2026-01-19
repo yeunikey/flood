@@ -2,36 +2,18 @@ import { Entity, PrimaryColumn, Column } from 'typeorm';
 
 @Entity('tiles')
 export class Tile {
+  @PrimaryColumn()
+  id: string;
 
-    @PrimaryColumn()
-    id: string;
+  @Column({ nullable: true })
+  name: string;
 
-    @Column()
-    name: string;
+  @Column({ nullable: true })
+  geoJsonPath: string;
 
-    @Column()
-    geoPath: string;
+  @Column({ nullable: true })
+  mbtilesPath: string;
 
-    @Column()
-    mbtilesPath: string;
-
-    @Column({ nullable: true })
-    type: 'geojson' | 'geotiff';
-
-    @Column({ default: 'solid' })
-    colorMode: 'solid' | 'gradient';
-
-    @Column({ nullable: true })
-    selectedVariable: string;
-
-    @Column({ nullable: true })
-    solidColor: string;
-
-    @Column({ nullable: true })
-    gradientColorA: string;
-
-    @Column({ nullable: true })
-    gradientColorB: string;
-
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  createdAt: Date;
 }
-

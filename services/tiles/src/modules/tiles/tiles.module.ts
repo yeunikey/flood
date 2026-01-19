@@ -6,8 +6,8 @@ import { Tile } from './entities/tile.entity';
 import { TileserverManagerService } from './tileserver.manager';
 
 @Module({
-    controllers: [TilesController],
-    providers: [TilesService, TileserverManagerService],
-    imports: [TypeOrmModule.forFeature([Tile])]
+  controllers: [TilesController],
+  providers: [TilesService, TileserverManagerService],
+  imports: [TypeOrmModule.forFeature([Tile])],
 })
-export class TilesModule { }
+export class TilesModule {}
