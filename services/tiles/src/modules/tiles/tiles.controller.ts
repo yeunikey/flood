@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 
 import {
@@ -18,12 +16,10 @@ import { v4 as uuidv4 } from 'uuid';
 import { TilesService } from './tiles.service';
 import { join, extname } from 'path';
 import { existsSync, mkdirSync } from 'fs';
-import { TileserverManagerService } from './tileserver.manager';
 import { Request } from 'express';
 import { IsOptional, IsString, IsUUID } from 'class-validator';
 import { Transform } from 'class-transformer';
 
-// DTO с валидацией и трансформацией
 export class CreateTileDto {
   @IsOptional()
   @IsUUID('4', { message: 'tileUUID должен быть валидным UUID v4' })
@@ -35,17 +31,13 @@ export class CreateTileDto {
   name?: string;
 }
 
-// Интерфейс для Multer (так как req.body там еще any)
 interface MulterRequest extends Request {
   body: Partial<CreateTileDto>;
 }
 
 @Controller('')
 export class TilesController {
-  constructor(
-    private readonly tilesService: TilesService,
-    private readonly tileserverManager: TileserverManagerService,
-  ) {}
+  constructor(private readonly tilesService: TilesService) {}
 
   @Post('upload')
   @UseInterceptors(
@@ -61,7 +53,6 @@ export class TilesController {
           cb(null, geoDir);
         },
         filename: (req: MulterRequest, file, cb) => {
-          // Если UUID не пришел с фронта, генерируем его здесь
           if (!req.body.tileUUID) {
             req.body.tileUUID = uuidv4();
           }
@@ -90,7 +81,6 @@ export class TilesController {
       throw new Error('Internal Server Error: UUID was not generated');
     }
 
-    // Передаем только нужные поля
     const tile = await this.tilesService.createFromGeoJson(
       { path: geoFile.path, filename: geoFile.filename },
       {
@@ -98,8 +88,6 @@ export class TilesController {
         name: body.name,
       },
     );
-
-    this.tileserverManager.restartTileserver();
 
     return {
       status: 'success',

@@ -30,21 +30,17 @@ const handleLogin = async () => {
 };
 
 const handleCreate = async () => {
-  const { login, password, setModal } = useAuth.getState();
+  const { login, password } = useAuth.getState();
 
   if (login == "" || password == "") {
     toast.error("Заполните все поля");
     return;
   }
 
-  setModal(true);
-
   await api
     .post<ApiResponse<AuthResponse>>("auth/register", {
-      user: {
-        login: login,
-        password: password,
-      },
+      login: login,
+      password: password,
     })
     .then((response) => {
       if (response.data.statusCode == 400) {

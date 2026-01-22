@@ -1,9 +1,11 @@
 # services/tiles/Dockerfile
 FROM node:22-alpine AS base
 
+# Добавил sqlite-dev в список ниже
 RUN apk add --no-cache \
     libc6-compat \
     sqlite \
+    sqlite-dev \
     python3 \
     make \
     g++ \

@@ -40,6 +40,7 @@ export class AuthController {
       return {
         statusCode: HttpStatus.FOUND,
         message: 'Такой юзер уже существует',
+        data: await this.userService.findByLoginSafe(body.login),
       };
     }
 
