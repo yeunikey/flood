@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package tiles;
+
+service TilesService {
+  rpc FindMany (FindIdsRequest) returns (TilesListResponse);
+}
+
+message FindIdsRequest {
+  repeated string ids = 1;
+}
+
+message Tile {
+  string id = 1;
+  string name = 2;
+}
+
+message TilesListResponse {
+  repeated Tile tiles = 1;
+}

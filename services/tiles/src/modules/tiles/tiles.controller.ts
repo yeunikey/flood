@@ -1,14 +1,13 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-
 import {
   Controller,
   Post,
   UseInterceptors,
   UploadedFiles,
-  Get,
   Body,
   ValidationPipe,
   UsePipes,
+  Delete,
+  Param,
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -17,19 +16,7 @@ import { TilesService } from './tiles.service';
 import { join, extname } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { Request } from 'express';
-import { IsOptional, IsString, IsUUID } from 'class-validator';
-import { Transform } from 'class-transformer';
-
-export class CreateTileDto {
-  @IsOptional()
-  @IsUUID('4', { message: 'tileUUID должен быть валидным UUID v4' })
-  tileUUID?: string;
-
-  @IsOptional()
-  @IsString()
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
-  name?: string;
-}
+import { CreateTileDto } from './dto/create-tile.dto';
 
 interface MulterRequest extends Request {
   body: Partial<CreateTileDto>;
@@ -96,11 +83,12 @@ export class TilesController {
     };
   }
 
-  @Get()
-  async getAll() {
+  @Delete(':id')
+  async delete(@Param('id') id: string) {
+    await this.tilesService.delete(id);
     return {
       statusCode: 200,
-      data: await this.tilesService.getAllTiles(),
+      message: 'Tile deleted successfully',
     };
   }
 }

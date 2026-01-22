@@ -22,9 +22,6 @@ RUN git clone https://github.com/mapbox/tippecanoe.git \
     && cd .. \
     && rm -rf tippecanoe
 
-# 3. Устанавливаем tileserver-gl-light глобально
-RUN npm install -g tileserver-gl-light
-
 WORKDIR /app
 
 FROM base AS dev

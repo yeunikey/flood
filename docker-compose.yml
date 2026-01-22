@@ -74,15 +74,17 @@ services:
     restart: always
     expose:
       - "3000"
-      - "8080"
+      - "5000"
     volumes:
       - ./services/tiles:/app
       - /app/node_modules
       - ./uploads:/app/uploads
+      - ./libs:/app/libs
     env_file:
       - ".env.dev"
     environment:
       - UPLOADS_PATH=/app/uploads
       - TILESERVER_CONFIG_PATH=/app/uploads/tileserver-config
+      - GRPC_URL=0.0.0.0:5000
     extra_hosts:
       - "host.docker.internal:host-gateway"

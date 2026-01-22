@@ -1,9 +1,9 @@
-import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger, HttpStatus } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Tile } from './entities/tile.entity';
 import { join } from 'path';
-import { existsSync, mkdirSync } from 'fs';
+import { existsSync, mkdirSync, unlinkSync } from 'fs';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { TileserverService } from '../tileserver/tileserver.service';
@@ -43,7 +43,7 @@ export class TilesService implements OnModuleInit {
       `${id}.mbtiles`,
     );
 
-    const cmd = `tippecanoe -o "${mbtilesPath}" -f -zg --drop-densest-as-needed "${fileData.path}"`;
+    const cmd = `tippecanoe -o "${mbtilesPath}" -S 10 -f -zg --drop-densest-as-needed "${fileData.path}"`;
 
     try {
       this.logger.log(`Starting Tippecanoe...`);
@@ -67,5 +67,34 @@ export class TilesService implements OnModuleInit {
 
   async getAllTiles() {
     return this.tilesRepository.find();
+  }
+
+  async delete(id: string) {
+    const tile = await this.tilesRepository.findOne({ where: { id } });
+    if (!tile) {
+      return {
+        status: HttpStatus.NOT_FOUND,
+        message: 'Tile not found',
+      };
+    }
+
+    try {
+      if (tile.geoJsonPath && existsSync(tile.geoJsonPath)) {
+        unlinkSync(tile.geoJsonPath);
+      }
+      if (tile.mbtilesPath && existsSync(tile.mbtilesPath)) {
+        unlinkSync(tile.mbtilesPath);
+      }
+    } catch (error) {
+      this.logger.error(`Error deleting files for tile ${id}`, error);
+    }
+
+    await this.tilesRepository.remove(tile);
+
+    this.tileserverService.loadTilesets();
+
+    return {
+      status: HttpStatus.OK,
+    };
   }
 }
