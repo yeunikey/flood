@@ -20,7 +20,7 @@ function MonitorMap() {
     }, [map, projection, style])
 
     return (
-        <div className="h-full flex flex-col">
+        <div className="flex-1 flex flex-col">
 
             <PublicLayersMap />
             <SiteMarkers />

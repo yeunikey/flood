@@ -3,6 +3,7 @@ import { useMonitorMap } from "../model/useMonitorMap";
 import { useMonitorSites } from "../model/useMonitorSites";
 import mapboxgl from 'mapbox-gl';
 import { useLayers } from "@/entities/layer/model/useLayers";
+import { useMonitorStore } from "../model/useMontorStore";
 
 
 function SiteMarkers() {
@@ -11,6 +12,7 @@ function SiteMarkers() {
     const { activeSites } = useMonitorSites();
     const { layers } = useLayers();
     const markerRefs = useRef<mapboxgl.Marker[]>([]);
+    const { setSelectedSite, setSelectedCategory } = useMonitorStore();
 
     const generateColorFromId = (id: number) => {
         const hue = (id * 137.508) % 360;
@@ -44,12 +46,10 @@ function SiteMarkers() {
                 el.style.cursor = 'pointer';
                 el.style.zIndex = '1000';
 
-                // el.onclick = () => {
-                //     setSelectedSite?.(site);
-                //     setSite?.(site);
-                //     setCategory?.(layer.category ?? null);
-                //     console.log({ site, category: layer.category });
-                // };
+                el.onclick = () => {
+                    setSelectedSite(site);
+                    setSelectedCategory(layer.category);
+                };
 
                 const marker = new mapboxgl.Marker({ element: el })
                     .setLngLat([site.longtitude, site.latitude])

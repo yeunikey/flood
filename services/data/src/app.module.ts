@@ -9,6 +9,7 @@ import { VariableModule } from './modules/variable/variable.module';
 import { CacheModule } from '@nestjs/cache-manager';
 import { FileModule } from './modules/file/file.module';
 import { PoolModule } from './modules/pools/pools.module';
+import { SpatialModule } from './modules/spatial/spatial.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { PoolModule } from './modules/pools/pools.module';
     VariableModule,
     FileModule,
     PoolModule,
+    SpatialModule,
     CacheModule.register({ ttl: 30 * 60 * 1000, isGlobal: true }),
   ],
 })

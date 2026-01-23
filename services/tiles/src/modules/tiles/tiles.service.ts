@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit, Logger, HttpStatus } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Tile } from './entities/tile.entity';
 import { join } from 'path';
 import { existsSync, mkdirSync, unlinkSync } from 'fs';
@@ -96,5 +96,14 @@ export class TilesService implements OnModuleInit {
     return {
       status: HttpStatus.OK,
     };
+  }
+
+  async findByIds(ids: string[]): Promise<Tile[]> {
+    if (!ids || ids.length === 0) return [];
+    return this.tilesRepository.find({
+      where: {
+        id: In(ids),
+      },
+    });
   }
 }

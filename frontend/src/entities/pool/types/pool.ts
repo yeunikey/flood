@@ -1,14 +1,13 @@
 import Site from "@/entities/site/types/site";
-import Tile from "@/entities/tiles/types/tile";
+import { Spatial } from "@/entities/spatial/types/spatial";
 import { FeatureCollection } from "geojson";
 
 interface Pool {
-    id: number;
-    name: string;
-    geojson: FeatureCollection;
-    sites: Site[];
-    tiles: Tile[];
+  id: number;
+  name: string;
+  geojson: FeatureCollection;
+  sites: Site[];
+  spatials: Spatial[];
 }
-
 
 export default Pool;

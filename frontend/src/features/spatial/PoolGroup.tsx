@@ -28,10 +28,10 @@ const PoolGroup = ({
             </ListItemButton>
 
             <Collapse in={isExpanded} timeout="auto" unmountOnExit>
-                {pool.tiles.map((tile, i) => (
+                {pool.spatials.map((tile, i) => (
                     <CardActionArea key={i} onClick={() => setActiveTile(tile)}>
                         <ListItemButton sx={{ pl: 6 }} selected={activeTile?.id == tile.id}>
-                            <ListItemText primary={<Typography fontSize="15px" fontWeight={500}>{tile.name}</Typography>} secondary={tile.type} />
+                            <ListItemText primary={<Typography fontSize="15px" fontWeight={500}>{tile.name}</Typography>} secondary={tile.name} />
                         </ListItemButton>
                     </CardActionArea>
                 ))}

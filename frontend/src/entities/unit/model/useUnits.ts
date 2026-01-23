@@ -23,7 +23,7 @@ export const useUnits = create<UnitState>((set) => ({
         set({ isLoading: true });
 
         await api
-            .get<ApiResponse<Unit[]>>("/variables/units", {
+            .get<ApiResponse<Unit[]>>("data/variables/units", {
                 headers: { Authorization: "Bearer " + token },
             })
             .then(({ data }) => {

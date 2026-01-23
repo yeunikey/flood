@@ -1,4 +1,9 @@
-import { IsString, IsArray, IsNumber } from '@nestjs/class-validator';
+import {
+  IsString,
+  IsArray,
+  IsNumber,
+  IsOptional,
+} from '@nestjs/class-validator';
 import { FeatureCollection } from 'geojson';
 
 export class PoolCreateDto {
@@ -10,4 +15,9 @@ export class PoolCreateDto {
   @IsArray()
   @IsNumber({}, { each: true })
   siteIds: number[];
+
+  @IsOptional()
+  @IsArray()
+  @IsNumber({}, { each: true })
+  spatialIds?: number[];
 }

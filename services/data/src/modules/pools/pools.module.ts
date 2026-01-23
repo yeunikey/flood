@@ -5,9 +5,10 @@ import { PoolService } from './pool.service';
 import { PoolController } from './pool.controller';
 import { FileModule } from '../file/file.module';
 import { Site } from '../sites/entities/site';
+import { Spatial } from '../spatial/entity/spatial.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Pool, Site]), FileModule],
+  imports: [TypeOrmModule.forFeature([Pool, Site, Spatial]), FileModule],
   providers: [PoolService],
   controllers: [PoolController],
   exports: [PoolService],

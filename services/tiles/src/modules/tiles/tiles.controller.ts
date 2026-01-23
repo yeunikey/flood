@@ -17,6 +17,7 @@ import { join, extname } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { Request } from 'express';
 import { CreateTileDto } from './dto/create-tile.dto';
+import { GrpcMethod } from '@nestjs/microservices';
 
 interface MulterRequest extends Request {
   body: Partial<CreateTileDto>;
@@ -25,6 +26,18 @@ interface MulterRequest extends Request {
 @Controller('')
 export class TilesController {
   constructor(private readonly tilesService: TilesService) {}
+
+  @GrpcMethod('TilesService', 'FindMany')
+  async findMany(data: { ids: string[] }) {
+    const tiles = await this.tilesService.findByIds(data.ids);
+
+    return {
+      tiles: tiles.map((tile) => ({
+        id: tile.id,
+        name: tile.name,
+      })),
+    };
+  }
 
   @Post('upload')
   @UseInterceptors(

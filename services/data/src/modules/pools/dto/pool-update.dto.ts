@@ -18,4 +18,9 @@ export class PoolUpdateDto {
   @IsArray()
   @IsNumber({}, { each: true })
   siteIds?: number[];
+
+  @IsOptional()
+  @IsArray()
+  @IsNumber({}, { each: true })
+  spatialIds?: number[];
 }

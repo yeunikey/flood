@@ -8,7 +8,7 @@ WORKDIR /app
 # 2. Dependencies (Установка зависимостей)
 FROM base AS deps
 COPY package.json package-lock.json* ./
-RUN npm ci
+RUN npm i
 
 # 3. Development (Этап для локальной разработки)
 FROM base AS dev
