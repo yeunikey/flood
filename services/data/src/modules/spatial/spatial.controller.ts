@@ -6,6 +6,7 @@ import {
   Param,
   ParseIntPipe,
   HttpStatus,
+  Delete,
 } from '@nestjs/common';
 import { SpatialService } from './spatial.service';
 import { CreateSpatialDto } from './dto/create-spatial.dto';
@@ -35,6 +36,25 @@ export class SpatialController {
     return {
       status: HttpStatus.OK,
       data: await this.spatialService.findOne(id),
+    };
+  }
+
+  @Delete(':id')
+  async remove(@Param('id', ParseIntPipe) id: number) {
+    return {
+      status: HttpStatus.OK,
+      data: await this.spatialService.remove(id),
+    };
+  }
+
+  @Post(':id')
+  async update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateSpatialDto: CreateSpatialDto,
+  ) {
+    return {
+      status: HttpStatus.OK,
+      data: await this.spatialService.update(id, updateSpatialDto),
     };
   }
 }

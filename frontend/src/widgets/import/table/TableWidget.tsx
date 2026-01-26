@@ -1,5 +1,5 @@
 import { Divider } from "@mui/material";
-import CategoryList from "@/widgets/import/categories_list/CategoryList";
+import CategoryList from "@/widgets/import/table/categories_list/CategoryList";
 import { useImportStore } from "@/features/import/model/useImportStore";
 import CreateVariableModal from "@/features/import/ui/modal/CreateVariableModal";
 import ProgressModal from "@/features/import/ui/modal/ProgressModal";

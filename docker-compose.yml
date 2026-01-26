@@ -28,6 +28,7 @@ services:
     depends_on:
       - auth-service
       - data-service
+      - tiles-service
 
   auth-service:
     container_name: auth-service

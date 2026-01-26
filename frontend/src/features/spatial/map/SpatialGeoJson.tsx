@@ -1,222 +1,240 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useSpatialMap } from "../model/useSpatialMap";
 import { useSpatialTiles } from "../model/useSpatialTiles";
-import { ExpressionSpecification } from "mapbox-gl";
-import mapboxgl from 'mapbox-gl';
-import { Box, Typography } from "@mui/material";
+import {
+  DataDrivenPropertyValueSpecification,
+  ColorSpecification,
+  MapSourceDataEvent,
+  Popup,
+  MapLayerMouseEvent,
+} from "mapbox-gl";
+import { useSpatialSettings } from "../model/useSpatialSettings";
+
+type FillColorExpression = string | (string | number | string[])[];
 
 function SpatialGeoJson() {
+  const { map } = useSpatialMap();
+  const { activeSpatial, activeTileId } = useSpatialTiles();
+  const { tooltipEnabled } = useSpatialSettings();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const { map } = useSpatialMap();
-    const { activeTile } = useSpatialTiles();
+  useEffect(() => {
+    if (!map || !activeSpatial || !activeTileId) return;
 
-    const [legend, setLegend] = useState<
-        { color: string; value: number | string }[]
-    >([]);
+    const sourceId = "spatial-source";
+    const layerId = "spatial-layer";
 
-    useEffect(() => {
-        if (!map || !activeTile?.id) return;
+    if (map.getLayer(layerId)) map.removeLayer(layerId);
+    if (map.getSource(sourceId)) map.removeSource(sourceId);
 
-        const loadLayer = async () => {
+    map.addSource(sourceId, {
+      type: "vector",
+      tiles: [
+        `http://localhost:3001/v1/tiles/server/${activeTileId}/{z}/{x}/{y}.pbf`,
+      ],
+      minzoom: 0,
+      maxzoom: 14,
+    });
 
-            map.getStyle().layers?.forEach((layer) => {
-                if (layer.id.startsWith("tile-layer-") && map.getLayer(layer.id)) {
-                    map.removeLayer(layer.id);
-                }
-            });
+    const sourceLayer = activeTileId.replace(/-/g, "");
 
-            Object.keys(map.getStyle().sources).forEach((sourceId) => {
-                if (sourceId.startsWith("tile-source-") && map.getSource(sourceId)) {
-                    map.removeSource(sourceId);
-                }
-            });
+    let fillColorExpression: FillColorExpression = "#0080ff";
 
-            const sourceId = `tile-source-${activeTile.id}`;
-            const tileUrl = `https://tileserver.flood.astanait.edu.kz/data/${activeTile.id}/{z}/{x}/{y}.pbf`;
-            const tileJSONUrl = `https://tileserver.flood.astanait.edu.kz/data/${activeTile.id}.json`;
+    if (activeSpatial.style.type === "solid") {
+      fillColorExpression = activeSpatial.style.fillColor || "#0080ff";
+    } else if (
+      activeSpatial.style.type === "gradient" &&
+      activeSpatial.style.gradient
+    ) {
+      const { variable, minColor, maxColor } = activeSpatial.style.gradient;
 
-            try {
-                const res = await fetch(tileJSONUrl);
-                const data = await res.json();
+      fillColorExpression = [
+        "interpolate",
+        ["linear"],
+        ["get", variable],
+        0,
+        minColor,
+        100,
+        maxColor,
+      ];
+    }
 
-                const sourceLayerName = data.vector_layers?.[0]?.id;
-                if (!sourceLayerName) {
-                    console.error("Не удалось получить source-layer из TileJSON");
-                    return;
-                }
+    map.addLayer({
+      id: layerId,
+      type: "fill",
+      source: sourceId,
+      "source-layer": sourceLayer,
+      paint: {
+        "fill-color":
+          fillColorExpression as DataDrivenPropertyValueSpecification<ColorSpecification>,
+        "fill-opacity": activeSpatial.style.opacity || 0.6,
+        "fill-outline-color": activeSpatial.style.borderColor || "#000",
+      },
+    });
 
-                const attributeInfo = data.tilestats.layers[0].attributes.find(
-                    (attr: any) => attr.attribute === activeTile.selectedVariable
-                );
-                const minValue = attributeInfo?.min ?? 0;
-                const maxValue = attributeInfo?.max ?? 1;
+    const styleId = "spatial-popup-dark-theme";
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement("style");
+      style.id = styleId;
+      style.innerHTML = `
+        .spatial-hover-popup .mapboxgl-popup-content {
+          background: transparent !important;
+          padding: 0 !important;
+          box-shadow: none !important;
+        }
+        .spatial-hover-popup .mapboxgl-popup-tip {
+          border-top-color: #262626 !important;
+        }
+      `;
+      document.head.appendChild(style);
+    }
 
-                // Добавляем источник
-                map.addSource(sourceId, {
-                    type: "vector",
-                    tiles: [tileUrl],
-                    minzoom: 0,
-                    maxzoom: 14,
-                });
+    const popup = new Popup({
+      closeButton: false,
+      closeOnClick: false,
+      maxWidth: "320px",
+      className: "spatial-hover-popup",
+      offset: 15,
+    });
 
-                // Если solid, создаём один слой как обычно
-                if (activeTile.colorMode === 'solid') {
-                    const layerType = data.vector_layers[0].geometry === "Polygon" ? "fill" : "line";
-                    const paint = layerType === "fill"
-                        ? { "fill-color": activeTile.solidColor || "#1976D2", "fill-opacity": 0.3 }
-                        : { "line-color": activeTile.solidColor || "#1976D2", "line-width": 1 };
+    const handleMouseMove = (e: MapLayerMouseEvent) => {
+      if (!tooltipEnabled) {
+        map.getCanvas().style.cursor = "";
+        popup.remove();
+        return;
+      }
 
-                    map.addLayer({
-                        id: `tile-layer-${activeTile.id}`,
-                        type: layerType,
-                        source: sourceId,
-                        "source-layer": sourceLayerName,
-                        paint,
-                    });
-                }
-                // Если gradient, создаём два слоя: fill и line
-                else if (activeTile.colorMode === 'gradient') {
-                    const variable = activeTile.selectedVariable;
+      if (!e.features || e.features.length === 0) return;
 
-                    // Пропускаем, если переменная не выбрана
-                    if (!variable) return;
+      map.getCanvas().style.cursor = "pointer";
 
-                    const colorA = activeTile.gradientColorA || "#00f";
-                    const colorB = activeTile.gradientColorB || "#f00";
+      const feature = e.features[0];
+      const props = feature.properties;
 
-                    const colorExpr: ExpressionSpecification = [
-                        'interpolate',
-                        ['linear'],
-                        ['get', variable],
-                        minValue, colorA,
-                        maxValue, colorB
-                    ];
+      if (!props) return;
 
-                    const fillLayerId = `tile-layer-fill-${activeTile.id}`;
+      let htmlContent = `<div style="
+        font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        background-color: #262626;
+        color: #e5e5e5;
+        padding: 12px;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        border: 1px solid #404040;
+        min-width: 180px;
+      ">`;
 
-                    map.addLayer({
-                        id: fillLayerId,
-                        type: "fill",
-                        source: sourceId,
-                        "source-layer": sourceLayerName,
-                        paint: {
-                            "fill-color": colorExpr,
-                            "fill-opacity": 0.6
-                        },
-                        filter: ["has", variable]
-                    });
+      if (
+        activeSpatial.style.type === "gradient" &&
+        activeSpatial.style.gradient?.variable
+      ) {
+        const mainVar = activeSpatial.style.gradient.variable;
+        const mainVal = props[mainVar];
+        if (mainVal !== undefined) {
+          htmlContent += `
+            <div style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              border-bottom: 1px solid #404040;
+              padding-bottom: 8px;
+              margin-bottom: 8px;
+            ">
+              <span style="color: #90caf9; font-weight: 600; font-size: 13px;">${mainVar}</span>
+              <span style="color: #fff; font-weight: 700; font-size: 15px;">${mainVal}</span>
+            </div>
+          `;
+        }
+      }
 
-                    const popup = new mapboxgl.Popup({
-                        closeButton: false,
-                        closeOnClick: false
-                    });
+      htmlContent += `<table style="width: 100%; border-collapse: collapse; font-size: 12px;">`;
+      Object.entries(props).forEach(([key, value]) => {
+        htmlContent += `
+          <tr style="border-bottom: 1px solid #333;">
+            <td style="color: #a3a3a3; padding: 4px 0; vertical-align: top;">${key}</td>
+            <td style="text-align: right; color: #f5f5f5; padding: 4px 0 4px 12px; font-weight: 500; word-break: break-all;">${value}</td>
+          </tr>
+        `;
+      });
+      htmlContent += `</table></div>`;
 
-                    map.on("mousemove", fillLayerId, e => {
-                        map.getCanvas().style.cursor = "pointer";
-                        const coords = e.lngLat;
-                        const props = e.features?.[0]?.properties || {};
-                        const value = props[variable];
+      popup.setLngLat(e.lngLat).setHTML(htmlContent).addTo(map);
+    };
 
-                        if (value === undefined || value === null) {
-                            popup.remove();
-                            return;
-                        }
+    const handleMouseLeave = () => {
+      map.getCanvas().style.cursor = "";
+      popup.remove();
+    };
 
-                        popup
-                            .setLngLat(coords)
-                            .setHTML(`<strong>${variable}:</strong> ${value}`)
-                            .addTo(map);
-                    });
+    map.on("mousemove", layerId, handleMouseMove);
+    map.on("mouseleave", layerId, handleMouseLeave);
 
-                    map.on("mouseleave", fillLayerId, () => {
-                        map.getCanvas().style.cursor = "";
-                        popup.remove();
-                    });
+    const updateGradientBounds = () => {
+      if (
+        activeSpatial.style.type !== "gradient" ||
+        !activeSpatial.style.gradient
+      )
+        return;
 
-                    // Легенда
+      const { variable, minColor, maxColor } = activeSpatial.style.gradient;
 
-                    // === Генерация легенды ===
-                    const steps = 6;
-                    const step = (maxValue - minValue) / (steps - 1);
-                    const legendItems = Array.from({ length: steps }, (_, i) => {
-                        const value = minValue + i * step;
-                        // интерполяция цвета между A и B
-                        const interpolateColor = (t: number) => {
-                            const a = parseInt(colorA.slice(1), 16);
-                            const b = parseInt(colorB.slice(1), 16);
-                            const ar = (a >> 16) & 0xff,
-                                ag = (a >> 8) & 0xff,
-                                ab = a & 0xff;
-                            const br = (b >> 16) & 0xff,
-                                bg = (b >> 8) & 0xff,
-                                bb = b & 0xff;
-                            const r = Math.round(ar + (br - ar) * t);
-                            const g = Math.round(ag + (bg - ag) * t);
-                            const bl = Math.round(ab + (bb - ab) * t);
-                            return `rgb(${r},${g},${bl})`;
-                        };
-                        const color = interpolateColor(i / (steps - 1));
-                        return { color, value: value.toFixed(2) };
-                    });
+      const features = map.querySourceFeatures(sourceId, {
+        sourceLayer: sourceLayer,
+      });
 
-                    setLegend(legendItems);
+      if (!features || features.length === 0) return;
 
-                }
+      let min = Infinity;
+      let max = -Infinity;
+      let hasData = false;
 
-            } catch (err) {
-                console.error("Ошибка загрузки TileJSON:", err);
-            }
-        };
+      for (let i = 0; i < features.length; i++) {
+        const val = features[i].properties?.[variable];
+        if (typeof val === "number") {
+          if (val < min) min = val;
+          if (val > max) max = val;
+          hasData = true;
+        }
+      }
 
-        loadLayer();
-    }, [map, activeTile]);
+      if (hasData && min !== Infinity && max !== -Infinity && min !== max) {
+        map.setPaintProperty(layerId, "fill-color", [
+          "interpolate",
+          ["linear"],
+          ["get", variable],
+          min,
+          minColor,
+          max,
+          maxColor,
+        ]);
+      }
+    };
 
-    return <>
+    const onSourceData = (e: MapSourceDataEvent) => {
+      if (e.sourceId === sourceId && e.isSourceLoaded) {
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(updateGradientBounds, 50);
+      }
+    };
 
-        {legend.length > 0 && (
-            <Box
-                sx={{
-                    position: "absolute",
-                    top: 16,
-                    left: 16,
-                    p: 2,
-                    bgcolor: "rgba(255,255,255,0.9)",
-                    borderRadius: 2,
-                    boxShadow: 2,
-                    zIndex: 20,
-                    minWidth: 160,
-                }}
-            >
-                <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                    {activeTile?.selectedVariable}
-                </Typography>
+    map.on("sourcedata", onSourceData);
 
-                {legend.map((item, i) => (
-                    <Box
-                        key={i}
-                        sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            mb: 0.5,
-                            gap: 1,
-                        }}
-                    >
-                        <Box
-                            sx={{
-                                width: 20,
-                                height: 20,
-                                borderRadius: 0.5,
-                                backgroundColor: item.color,
-                                border: "1px solid #aaa",
-                            }}
-                        />
-                        <Typography variant="body2">{item.value}</Typography>
-                    </Box>
-                ))}
-            </Box>
-        )}
-    </>;
+    return () => {
+      map.off("mousemove", layerId, handleMouseMove);
+      map.off("mouseleave", layerId, handleMouseLeave);
+      popup.remove();
+
+      map.off("sourcedata", onSourceData);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (map.getLayer(layerId)) map.removeLayer(layerId);
+      if (map.getSource(sourceId)) map.removeSource(sourceId);
+
+      const el = document.getElementById(styleId);
+      if (el) el.remove();
+    };
+  }, [map, activeSpatial, activeTileId, tooltipEnabled]);
+
+  return null;
 }
 
 export default SpatialGeoJson;

@@ -22,21 +22,29 @@ import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CreateSpatialModal from "./modal/CreateSpatialModal";
+import UpdateSpatialModal from "./modal/UpdateSpatialModal";
+
+// Define the composite type used in the array
+interface SpatialComposite {
+  spatial: Spatial;
+  tiles: { id: string; name: string }[];
+}
 
 export default function SpatialWidget() {
   const { token } = useAuth();
-  const { spatials } = useSpatial();
+  const { spatials } = useSpatial(); // Assumed to be SpatialComposite[]
   const [createOpen, setCreateOpen] = useState(false);
-  const [editSpatial, setEditSpatial] = useState<Spatial | null>(null);
+
+  const [editSpatialData, setEditSpatialData] =
+    useState<SpatialComposite | null>(null);
 
   useEffect(() => {
     if (!token) return;
-
     fetchSpatials(token);
   }, [token]);
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this spatial object?"))
+    if (!confirm("Вы уверены, что хотите удалить эти пространственные данные?"))
       return;
     try {
       await api.delete(`spatial/${id}`, {
@@ -47,6 +55,10 @@ export default function SpatialWidget() {
       console.error(e);
       toast.error("Failed to delete");
     }
+  };
+
+  const handleSuccess = () => {
+    if (token) fetchSpatials(token);
   };
 
   return (
@@ -80,13 +92,15 @@ export default function SpatialWidget() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {spatials?.map((spatial) => (
-              <TableRow key={spatial.id} hover>
-                <TableCell>{spatial.id}</TableCell>
-                <TableCell className="font-medium">{spatial.name}</TableCell>
+            {spatials?.map((item) => (
+              <TableRow key={item.spatial.id} hover>
+                <TableCell>{item.spatial.id}</TableCell>
+                <TableCell className="font-medium">
+                  {item.spatial.name}
+                </TableCell>
                 <TableCell>
-                  {spatial.tileIds?.length ? (
-                    <Chip label={spatial.tileIds.length} size="small" />
+                  {item.spatial.tileIds?.length ? (
+                    <Chip label={item.spatial.tileIds.length} size="small" />
                   ) : (
                     <span className="text-gray-400">-</span>
                   )}
@@ -94,17 +108,21 @@ export default function SpatialWidget() {
                 <TableCell>
                   <Chip
                     label={
-                      spatial.style?.type === "gradient" ? "Gradient" : "Solid"
+                      item.spatial.style?.type === "gradient"
+                        ? "Градиент"
+                        : "Солид"
                     }
                     color={
-                      spatial.style?.type === "gradient" ? "primary" : "default"
+                      item.spatial.style?.type === "gradient"
+                        ? "primary"
+                        : "default"
                     }
                     variant="outlined"
                     size="small"
                   />
                 </TableCell>
                 <TableCell>
-                  {spatial.legend?.enabled ? (
+                  {item.spatial.legend?.enabled ? (
                     <span className="text-green-600 text-sm">Включено</span>
                   ) : (
                     <span className="text-gray-400 text-sm">Отключено</span>
@@ -115,14 +133,14 @@ export default function SpatialWidget() {
                     <IconButton
                       size="small"
                       color="primary"
-                      onClick={() => setEditSpatial(spatial)}
+                      onClick={() => setEditSpatialData(item)}
                     >
                       <EditIcon fontSize="small" />
                     </IconButton>
                     <IconButton
                       size="small"
                       color="error"
-                      onClick={() => handleDelete(spatial.id)}
+                      onClick={() => handleDelete(item.spatial.id)}
                     >
                       <DeleteIcon fontSize="small" />
                     </IconButton>
@@ -145,23 +163,22 @@ export default function SpatialWidget() {
         </Table>
       </TableContainer>
 
-      {/* Create Modal */}
       {createOpen && (
         <CreateSpatialModal
           open={createOpen}
           onClose={() => setCreateOpen(false)}
+          onSuccess={handleSuccess}
         />
       )}
 
-      {/* Update Modal */}
-      {/* {editSpatial && (
+      {editSpatialData && (
         <UpdateSpatialModal
-          open={!!editSpatial}
-          spatial={editSpatial}
-          onClose={() => setEditSpatial(null)}
+          open={!!editSpatialData}
+          spatialData={editSpatialData}
+          onClose={() => setEditSpatialData(null)}
           onSuccess={handleSuccess}
         />
-      )} */}
+      )}
     </div>
   );
 }

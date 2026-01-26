@@ -1,21 +1,29 @@
 import Pool from "@/entities/pool/types/pool";
-import Tile from "@/entities/tiles/types/tile";
+import { Spatial } from "@/entities/spatial/types/spatial";
 import { create } from "zustand";
 
 type State = {
-    activeTile: Tile | null;
-    setActiveTile: (tile: Tile | null) => void;
+  activeSpatial: Spatial | null;
+  setActiveSpatial: (spatial: Spatial | null) => void;
 
-    activePools: Pool[];
-    setActivePools: (activePools: Pool[]) => void;
+  activeTileId: string | null;
+  setActiveTileId: (id: string | null) => void;
+
+  activePools: Pool[];
+  setActivePools: (activePools: Pool[]) => void;
 };
 
 export const useSpatialTiles = create<State>((set) => ({
-    activeTile: null,
-    setActiveTile: (tiles) => set({ activeTile: tiles }),
+  activeSpatial: null,
+  setActiveSpatial: (spatial) =>
+    set({ activeSpatial: spatial, activeTileId: spatial?.tileIds[0] || null }),
 
-    activePools: [],
-    setActivePools: (activePools: Pool[]) => set({
-        activePools
-    })
+  activeTileId: null,
+  setActiveTileId: (id) => set({ activeTileId: id }),
+
+  activePools: [],
+  setActivePools: (activePools: Pool[]) =>
+    set({
+      activePools,
+    }),
 }));

@@ -1,20 +1,19 @@
 import SpatialItems from "@/features/spatial/SpatialItems";
-import SpatialMap from "@/features/spatial/SpatialMap";
+import SpatialMap from "@/widgets/import/spatial/SpatialMap";
 import { Divider, Grid } from "@mui/material";
 
 function ViewWidget() {
-    return (
-        <div className="flex h-full">
+  return (
+    <div className="flex h-full">
+      <SpatialItems />
 
-            <SpatialItems />
+      <Divider orientation="vertical" />
 
-            <Divider orientation="vertical" />
-
-            <Grid size={"grow"} className="grow flex flex-col flex-1">
-                <SpatialMap />
-            </Grid>
-        </div >
-    );
+      <Grid size={"grow"} className="grow flex flex-col flex-1">
+        <SpatialMap />
+      </Grid>
+    </div>
+  );
 }
 
 export default ViewWidget;

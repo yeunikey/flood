@@ -13,13 +13,12 @@ import {
   FormControl,
   InputLabel,
   ListItem,
-  ListItemText,
   MenuItem,
   Radio,
   Select,
   Slider,
   Switch,
-  ListItemButton,
+  FormHelperText,
 } from "@mui/material";
 import ModalBox from "@/shared/ui/el/ModalBox";
 import MapboxMap from "@/shared/ui/MapboxMap";
@@ -38,6 +37,7 @@ import {
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
+import { useSpatial } from "@/entities/spatial/model/useSpatial";
 
 interface CreateSpatialModalProps {
   open: boolean;
@@ -53,15 +53,23 @@ export default function CreateSpatialModal({
   const { token } = useAuth();
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
+  const { spatials, setSpatials } = useSpatial();
 
   const [tabIndex, setTabIndex] = useState(0);
   const mapRef = useRef<Map | null>(null);
 
   const [name, setName] = useState("");
+
+  // Files and their custom names
   const [files, setFiles] = useState<File[]>([]);
+  const [fileNames, setFileNames] = useState<string[]>([]);
+
   const [previewFileIndex, setPreviewFileIndex] = useState<number | null>(null);
   const [previewGeoJson, setPreviewGeoJson] =
     useState<FeatureCollection | null>(null);
+
+  // Available numeric properties for gradient
+  const [availableProperties, setAvailableProperties] = useState<string[]>([]);
 
   const [styleType, setStyleType] = useState<"solid" | "gradient">("solid");
   const [borderColor, setBorderColor] = useState("#333333");
@@ -75,6 +83,7 @@ export default function CreateSpatialModal({
   const [maxColor, setMaxColor] = useState("#ff0000");
 
   const [legendEnabled, setLegendEnabled] = useState(false);
+  const [legendTitle, setLegendTitle] = useState("");
   const [legendItems, setLegendItems] = useState<SpatialLegendItem[]>([]);
   const [newItemValue, setNewItemValue] = useState("");
   const [newItemColor, setNewItemColor] = useState("#000000");
@@ -83,6 +92,8 @@ export default function CreateSpatialModal({
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const newFiles = Array.from(e.target.files);
+      const newNames = newFiles.map((f) => f.name.replace(/\.[^/.]+$/, ""));
+
       setFiles((prev) => {
         const updated = [...prev, ...newFiles];
         if (prev.length === 0 && newFiles.length > 0) {
@@ -90,23 +101,36 @@ export default function CreateSpatialModal({
         }
         return updated;
       });
+      setFileNames((prev) => [...prev, ...newNames]);
     }
     e.target.value = "";
   };
 
   const removeFile = (index: number) => {
     setFiles((prev) => prev.filter((_, i) => i !== index));
+    setFileNames((prev) => prev.filter((_, i) => i !== index));
+
     if (previewFileIndex === index) {
       setPreviewFileIndex(null);
       setPreviewGeoJson(null);
+      setAvailableProperties([]);
     } else if (previewFileIndex !== null && previewFileIndex > index) {
       setPreviewFileIndex(previewFileIndex - 1);
     }
   };
 
+  const updateFileName = (index: number, newName: string) => {
+    setFileNames((prev) => {
+      const copy = [...prev];
+      copy[index] = newName;
+      return copy;
+    });
+  };
+
   useEffect(() => {
     if (previewFileIndex === null || !files[previewFileIndex]) {
       setPreviewGeoJson(null);
+      setAvailableProperties([]);
       return;
     }
 
@@ -118,11 +142,20 @@ export default function CreateSpatialModal({
         const parsed = JSON.parse(result);
         setPreviewGeoJson(parsed);
 
-        if (parsed.features?.[0]?.properties && !gradientVar) {
-          const numProp = Object.keys(parsed.features[0].properties).find(
+        // Extract numeric properties for gradient
+        if (parsed.features?.[0]?.properties) {
+          const props = Object.keys(parsed.features[0].properties).filter(
             (k) => typeof parsed.features[0].properties[k] === "number",
           );
-          if (numProp) setGradientVar(numProp);
+          setAvailableProperties(props);
+
+          // Auto-select first property if current one is invalid or empty
+          if (
+            props.length > 0 &&
+            (!gradientVar || !props.includes(gradientVar))
+          ) {
+            setGradientVar(props[0]);
+          }
         }
       } catch (err) {
         console.error(err);
@@ -169,6 +202,7 @@ export default function CreateSpatialModal({
       }
 
       try {
+        // Optional: fit bounds if needed
       } catch (e) {
         console.warn("Could not fit bounds", e);
       }
@@ -226,7 +260,7 @@ export default function CreateSpatialModal({
     minColor,
     maxColor,
     gradientVar,
-    previewGeoJson, 
+    previewGeoJson,
   ]);
 
   const addLegendItem = () => {
@@ -254,11 +288,13 @@ export default function CreateSpatialModal({
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        setUploadProgress(`Загрузка ${i + 1} из ${files.length}: ${file.name}`);
+        const tileName = fileNames[i] || file.name.replace(/\.[^/.]+$/, "");
+
+        setUploadProgress(`Загрузка ${i + 1} из ${files.length}: ${tileName}`);
 
         const formData = new FormData();
         formData.append("geo", file);
-        formData.append("name", file.name.replace(/\.[^/.]+$/, ""));
+        formData.append("name", tileName);
 
         const res = await vapi.post("/tiles/upload", formData, {
           headers: {
@@ -288,7 +324,7 @@ export default function CreateSpatialModal({
       };
 
       const legendPayload: SpatialLegend | null = legendEnabled
-        ? { enabled: true, items: legendItems }
+        ? { enabled: true, title: legendTitle, items: legendItems }
         : null;
 
       const payload = {
@@ -298,18 +334,22 @@ export default function CreateSpatialModal({
         legend: legendPayload,
       };
 
-      await api.post("data/spatial", payload, {
+      const res = await api.post("data/spatial", payload, {
         headers: { Authorization: "Bearer " + token },
       });
 
-      toast.success("Spatial created successfully");
+      setSpatials([...spatials, res.data.data]);
+
+      toast.success("Создано!");
       if (onSuccess) onSuccess();
       onClose();
 
       setName("");
       setFiles([]);
+      setFileNames([]);
       setPreviewFileIndex(null);
       setPreviewGeoJson(null);
+      setLegendTitle("");
     } catch {
     } finally {
       setLoading(false);
@@ -366,7 +406,7 @@ export default function CreateSpatialModal({
               <Typography variant="caption" color="text.secondary">
                 {previewFileIndex !== null
                   ? `Превью: ${files[previewFileIndex]?.name}`
-                  : "Выборите файл для превью"}
+                  : "Выберите файл для превью"}
               </Typography>
             </div>
           </div>
@@ -412,34 +452,51 @@ export default function CreateSpatialModal({
                         key={index}
                         divider
                         disablePadding
-                        secondaryAction={
-                          <IconButton
-                            size="small"
-                            onClick={() => removeFile(index)}
-                          >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        }
+                        className="p-2"
                       >
-                        <ListItemButton
-                          selected={previewFileIndex === index}
-                          onClick={() => setPreviewFileIndex(index)}
-                        >
+                        <div className="flex items-center gap-2 w-full">
                           <Radio
                             checked={previewFileIndex === index}
                             size="small"
                             onChange={() => setPreviewFileIndex(index)}
-                            sx={{ mr: 1 }}
+                            sx={{ p: 0.5 }}
                           />
-                          <ListItemText
-                            primary={file.name}
-                            secondary={(file.size / 1024).toFixed(0) + " KB"}
-                            primaryTypographyProps={{
-                              noWrap: true,
-                              variant: "body2",
-                            }}
-                          />
-                        </ListItemButton>
+
+                          <div className="flex flex-col flex-1 min-w-0">
+                            <TextField
+                              size="small"
+                              variant="standard"
+                              value={fileNames[index]}
+                              onChange={(e) =>
+                                updateFileName(index, e.target.value)
+                              }
+                              fullWidth
+                              placeholder="Название тайла"
+                              InputProps={{ disableUnderline: false }}
+                            />
+                            <Typography
+                              variant="caption"
+                              className="text-gray-400 text-[10px] truncate"
+                            >
+                              {file.name}
+                            </Typography>
+                          </div>
+
+                          <Typography
+                            variant="caption"
+                            className="whitespace-nowrap text-gray-400"
+                          >
+                            {(file.size / 1024).toFixed(0) + " KB"}
+                          </Typography>
+
+                          <IconButton
+                            size="small"
+                            onClick={() => removeFile(index)}
+                            sx={{ ml: 1 }}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </div>
                       </ListItem>
                     ))}
                   </List>
@@ -453,7 +510,9 @@ export default function CreateSpatialModal({
                     <Select
                       value={styleType}
                       label="Тип заливки"
-                      onChange={(e) => setStyleType(e.target.value)}
+                      onChange={(e) =>
+                        setStyleType(e.target.value as "solid" | "gradient")
+                      }
                     >
                       <MenuItem value="solid">Солид</MenuItem>
                       <MenuItem value="gradient">Градиент</MenuItem>
@@ -526,14 +585,30 @@ export default function CreateSpatialModal({
                       </div>
                     ) : (
                       <div className="flex flex-col gap-3">
-                        <TextField
-                          label="Переменная"
-                          size="small"
-                          fullWidth
-                          value={gradientVar}
-                          onChange={(e) => setGradientVar(e.target.value)}
-                          helperText="Значение из GeoJSON свойств для градиента"
-                        />
+                        {/* REPLACED TextField with FormControl + Select */}
+                        <FormControl fullWidth size="small">
+                          <InputLabel>Переменная</InputLabel>
+                          <Select
+                            value={gradientVar}
+                            label="Переменная"
+                            onChange={(e) => setGradientVar(e.target.value)}
+                          >
+                            {availableProperties.map((prop) => (
+                              <MenuItem key={prop} value={prop}>
+                                {prop}
+                              </MenuItem>
+                            ))}
+                            {availableProperties.length === 0 && (
+                              <MenuItem disabled value="">
+                                <em>Нет числовых свойств</em>
+                              </MenuItem>
+                            )}
+                          </Select>
+                          <FormHelperText>
+                            Выберите свойство из GeoJSON для градиента
+                          </FormHelperText>
+                        </FormControl>
+
                         <div className="flex gap-2">
                           <div className="flex-1 flex flex-col gap-1">
                             <Typography variant="caption">Мин.</Typography>
@@ -581,6 +656,15 @@ export default function CreateSpatialModal({
 
                   {legendEnabled && (
                     <div className="flex flex-col gap-2 flex-1 min-h-0">
+                      <TextField
+                        label="Заголовок легенды"
+                        size="small"
+                        value={legendTitle}
+                        onChange={(e) => setLegendTitle(e.target.value)}
+                        fullWidth
+                        placeholder="Заголовок легенды"
+                      />
+
                       <div className="flex gap-2 items-start">
                         <TextField
                           label="Значение"

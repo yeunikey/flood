@@ -45,14 +45,12 @@ function SpatialItems() {
     setActivePools(newActivePools);
   };
 
-  // Фильтруем бассейны с тайлами
   const nonEmptyPools = pools.filter(
     (p) => p.spatials && p.spatials.length > 0,
   );
 
-  // Тайлы, не входящие в бассейн
   const poolTileIds = pools.flatMap((p) => p.spatials.map((t) => t.id));
-  const standaloneTiles = spatials.filter((t) => !poolTileIds.includes(t.id));
+  const standaloneTiles = spatials.filter((t) => !poolTileIds.includes(t.spatial.id));
 
   return (
     <div className="w-96 h-full flex flex-col">
@@ -73,7 +71,7 @@ function SpatialItems() {
                 {
                   id: -1,
                   name: "Не входящие в бассейн",
-                  spatials: standaloneTiles,
+                  spatials: standaloneTiles.map((s) => s.spatial),
                 } as Pool
               }
               isExpanded={activePools.some((p) => p.id === -1)}

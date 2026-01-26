@@ -72,7 +72,9 @@ export class TileserverService implements OnModuleInit {
 
     return {
       ...metadata,
-      tiles: [`/tiles-data/${tileset}/{z}/{x}/{y}.pbf`],
+      tiles: [
+        `http://localhost:3001/v1/tiles/server/${tileset}/{z}/{x}/{y}.pbf`,
+      ],
       tilejson: '2.0.0',
     };
   }

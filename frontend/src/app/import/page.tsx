@@ -1,8 +1,8 @@
 "use client";
 
 import View from "@/shared/ui/View";
-import SpatialWidget from "@/widgets/import/SpatialWidget";
-import TableWidget from "@/widgets/import/TableWidget";
+import SpatialWidget from "@/widgets/import/spatial/SpatialWidget";
+import TableWidget from "@/widgets/import/table/TableWidget";
 import { Divider, Tab, Tabs } from "@mui/material";
 import { useState } from "react";
 

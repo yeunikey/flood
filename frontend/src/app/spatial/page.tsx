@@ -30,7 +30,7 @@ function SpatialPage() {
         <div className="py-2 pb-0 px-3">
           <Tabs value={currentPage} onChange={handleChange}>
             <Tab label="Экспорт из базы" />
-            <Tab label="Импорт данных" />
+            <Tab label="Экспорт из внешних источников" disabled />
           </Tabs>
         </div>
 

@@ -1,4 +1,5 @@
 import Pool from "@/entities/pool/types/pool";
+import Tile from "./tile";
 
 export interface SpatialStyle {
   type: "solid" | "gradient";
@@ -35,4 +36,9 @@ export interface Spatial {
   style: SpatialStyle;
   legend: SpatialLegend;
   pool: Pool | null;
+}
+
+export interface SpatialResponse {
+  spatial: Spatial;
+  tiles: Tile[];
 }

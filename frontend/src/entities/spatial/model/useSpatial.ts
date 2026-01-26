@@ -1,9 +1,9 @@
 import { create } from "zustand";
-import { Spatial } from "../types/spatial";
+import { SpatialResponse } from "../types/spatial";
 
 type State = {
-  spatials: Spatial[];
-  setSpatials: (spatials: Spatial[]) => void;
+  spatials: SpatialResponse[];
+  setSpatials: (spatials: SpatialResponse[]) => void;
 };
 
 export const useSpatial = create<State>((set) => ({

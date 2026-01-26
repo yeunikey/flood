@@ -43,7 +43,7 @@ function UpdatePoolModal() {
 
   const filteredSpatials =
     spatials?.filter((spatial) =>
-      spatial.name.toLowerCase().includes(search.toLowerCase()),
+      spatial.spatial.name.toLowerCase().includes(search.toLowerCase()),
     ) || [];
 
   const [map, setMap] = useState<Map | null>(null);
@@ -359,14 +359,14 @@ function UpdatePoolModal() {
               <>
                 {filteredSpatials.map((spatial) => (
                   <label
-                    key={spatial.id}
+                    key={spatial.spatial.id}
                     className="flex items-center cursor-pointer"
                   >
                     <Checkbox
-                      checked={selectedSpatials.includes(spatial.id)}
-                      onChange={() => toggleSpatial(spatial.id)}
+                      checked={selectedSpatials.includes(spatial.spatial.id)}
+                      onChange={() => toggleSpatial(spatial.spatial.id)}
                     />
-                    <span>{spatial.name}</span>
+                    <span>{spatial.spatial.name}</span>
                   </label>
                 ))}
               </>

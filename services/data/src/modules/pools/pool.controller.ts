@@ -21,6 +21,7 @@ export class PoolController {
       body.name,
       body.geojson,
       body.siteIds,
+      body.spatialIds,
     );
 
     return {
@@ -45,6 +46,7 @@ export class PoolController {
       body.name,
       body.geojson,
       body.siteIds,
+      body.spatialIds,
     );
 
     return {
