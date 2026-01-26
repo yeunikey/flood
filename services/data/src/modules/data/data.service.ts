@@ -224,7 +224,6 @@ export class DataService {
         'unit.description AS unit_description',
       ])
       .distinct(true)
-      .limit(10)
       .getRawMany<{
         id: number;
         name: string;

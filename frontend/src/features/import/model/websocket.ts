@@ -41,7 +41,7 @@ async function saveSites() {
   }
 
   const res = await api.post(
-    "/sites/bulk",
+    "data/sites/bulk",
     sites.map((s) => ({
       ...s,
       longtitude: Number(s.longitude),

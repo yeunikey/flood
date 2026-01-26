@@ -12,7 +12,7 @@ const fetchMethods = async () => {
     const { token } = useAuth.getState();
     const { setMethods, setLoading } = useMethods.getState();
 
-    await api.get<ApiResponse<MethodType[]>>("/metadata/methods", {
+    await api.get<ApiResponse<MethodType[]>>("data/metadata/methods", {
         headers: { Authorization: "Bearer " + token },
     })
         .then(({ data }) => {
@@ -53,7 +53,7 @@ const handleCreateMethod = async (
         name, description,
     };
 
-    await api.post<ApiResponse<MethodType>>('/metadata/methods', body,
+    await api.post<ApiResponse<MethodType>>('data/metadata/methods', body,
         {
             headers: {
                 Authorization: 'Bearer ' + token

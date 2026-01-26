@@ -9,17 +9,17 @@ export default function TableWidget() {
   const { stepperLevel } = useImportStore();
 
   return (
-    <div className="flex h-full w-full">
+    <div className="flex flex-1 overflow-hidden">
       <CreateVariableModal />
       <ProgressModal />
 
-      <div className="py-6 w-96">
+      <div className="py-6 w-96 flex-shrink-0">
         <CategoryList />
       </div>
 
       <Divider orientation="vertical" />
 
-      <div className="overflow-y-scroll w-full">
+      <div className="flex-1 overflow-y-auto overflow-x-auto min-w-0 relative">
         {stepperPages[stepperLevel]}
       </div>
     </div>

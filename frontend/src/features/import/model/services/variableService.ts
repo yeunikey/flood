@@ -93,7 +93,7 @@ const handleCreateVariable = async (
     }
 
     try {
-        const { data } = await api.post<ApiResponse<Variable>>("/variables", body, {
+        const { data } = await api.post<ApiResponse<Variable>>("data/variables", body, {
             headers: { Authorization: "Bearer " + token },
         });
 

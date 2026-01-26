@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
   Injectable,
   OnModuleInit,
@@ -69,6 +70,15 @@ export class TileserverService implements OnModuleInit {
     const rows = query.all() as { name: string; value: string }[];
     const metadata: Record<string, string> = {};
     rows.forEach((r) => (metadata[r.name] = r.value));
+
+    if (metadata.json) {
+      try {
+        const parsedJson = JSON.parse(metadata.json);
+        Object.assign(metadata, parsedJson);
+      } catch (e) {
+        console.error('Failed to parse metadata json field', e);
+      }
+    }
 
     return {
       ...metadata,

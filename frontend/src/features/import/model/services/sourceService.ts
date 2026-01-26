@@ -12,7 +12,7 @@ const fetchSources = async () => {
     const { token } = useAuth.getState();
     const { setSources, setLoading } = useSources.getState();
 
-    await api.get<ApiResponse<DataSource[]>>("/metadata/sources", {
+    await api.get<ApiResponse<DataSource[]>>("data/metadata/sources", {
         headers: { Authorization: "Bearer " + token },
     })
         .then(({ data }) => {
@@ -52,7 +52,7 @@ const handleCreateSource = async (
         name,
     };
 
-    await api.post<ApiResponse<DataSource>>('/metadata/sources', body,
+    await api.post<ApiResponse<DataSource>>('data/metadata/sources', body,
         {
             headers: {
                 Authorization: 'Bearer ' + token

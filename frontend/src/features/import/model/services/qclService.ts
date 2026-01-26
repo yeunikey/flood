@@ -13,7 +13,7 @@ const fetchQcls = async () => {
     const { token } = useAuth.getState();
     const { setQcls, setLoading } = useQcl.getState();
 
-    await api.get<ApiResponse<Qcl[]>>("/metadata/qcls", {
+    await api.get<ApiResponse<Qcl[]>>("data/metadata/qcls", {
         headers: { Authorization: "Bearer " + token },
     })
         .then(({ data }) => {
@@ -53,7 +53,7 @@ const handleCreateQcl = async (
         name, description,
     };
 
-    await api.post<ApiResponse<Category>>('/metadata/qcls', body,
+    await api.post<ApiResponse<Category>>('data/metadata/qcls', body,
         {
             headers: {
                 Authorization: 'Bearer ' + token

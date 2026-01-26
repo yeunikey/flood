@@ -144,9 +144,7 @@ export default function CreateSpatialModal({
 
         // Extract numeric properties for gradient
         if (parsed.features?.[0]?.properties) {
-          const props = Object.keys(parsed.features[0].properties).filter(
-            (k) => typeof parsed.features[0].properties[k] === "number",
-          );
+          const props = Object.keys(parsed.features[0].properties);
           setAvailableProperties(props);
 
           // Auto-select first property if current one is invalid or empty
