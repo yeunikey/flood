@@ -108,7 +108,7 @@ function SelectSite() {
     }
     try {
       const res = await api.post<ApiResponse<SiteType>>(
-        "/sites/types",
+        "data/sites/types",
         newSiteType,
         {
           headers: { Authorization: `Bearer ${token}` },

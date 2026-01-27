@@ -11,8 +11,14 @@ import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import TuneIcon from "@mui/icons-material/Tune";
 import useAnalyticStore from "@/features/analytic/model/useAnalyticStore";
+import { useAuth } from "@/shared/model/auth";
+import { fetchAnalyticData } from "@/features/analytic/model/fetchCategory";
+import { useAnalyticSites } from "@/features/analytic/model/useAnalyticSites";
+import { useState } from "react";
+import VariablesSettingsModal from "@/features/analytic/modal/VariablesSettingsModal";
 
 function ToolsWidget() {
+  const { token } = useAuth();
   const {
     variableCollapse,
     fromDate,
@@ -26,8 +32,24 @@ function ToolsWidget() {
     setToDate,
     setViewMode,
     setShowDependencies,
-    setPage,
   } = useAnalyticStore();
+
+  const { activeSites, setSiteRowsPerPage, setSitePage } = useAnalyticSites();
+
+  const handleDateChange = (
+    newFromDate: Date | null,
+    newToDate: Date | null,
+  ) => {
+    if (!token) return;
+
+    Object.values(activeSites).forEach((record) => {
+      record.sites.forEach((site) => {
+        fetchAnalyticData(token, site, 0, 10, newFromDate, newToDate);
+        setSiteRowsPerPage(record.category.id, site.id, 10);
+        setSitePage(record.category.id, site.id, 0);
+      });
+    });
+  };
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -59,7 +81,7 @@ function ToolsWidget() {
                 maxDate={!toDate ? globalMaxDate || undefined : toDate}
                 onChange={(newValue: Date | null) => {
                   setFromDate(newValue);
-                  setPage(0);
+                  handleDateChange(newValue, toDate);
                 }}
                 slotProps={{ textField: { size: "small" } }}
               />
@@ -76,30 +98,32 @@ function ToolsWidget() {
                 maxDate={globalMaxDate || undefined}
                 onChange={(newValue: Date | null) => {
                   setToDate(newValue);
-                  setPage(0);
+                  handleDateChange(fromDate, newValue);
                 }}
                 slotProps={{ textField: { size: "small" } }}
               />
             </div>
           </div>
 
-          <div className="">
-            <ToggleButtonGroup
-              color="primary"
-              value={viewMode}
-              exclusive
-              onChange={(_, a) => setViewMode(a)}
-              aria-label="Platform"
-              size="small"
-            >
-              <ToggleButton value="table" className="px-6!">
-                Табличный
-              </ToggleButton>
-              <ToggleButton value="chart" className="px-6!">
-                График
-              </ToggleButton>
-            </ToggleButtonGroup>{" "}
-          </div>
+          {!showDependencies && (
+            <div className="">
+              <ToggleButtonGroup
+                color="primary"
+                value={viewMode}
+                exclusive
+                onChange={(_, a) => setViewMode(a)}
+                aria-label="Platform"
+                size="small"
+              >
+                <ToggleButton value="table" className="px-6!">
+                  Табличный
+                </ToggleButton>
+                <ToggleButton value="chart" className="px-6!">
+                  График
+                </ToggleButton>
+              </ToggleButtonGroup>{" "}
+            </div>
+          )}
         </div>
 
         <Button
@@ -113,7 +137,7 @@ function ToolsWidget() {
             "&:hover": { bgcolor: "#1565c0" },
           }}
         >
-          Построить зависимости
+          {showDependencies ? "Построить зависимости" : "Обратно"}
         </Button>
       </div>
     </LocalizationProvider>

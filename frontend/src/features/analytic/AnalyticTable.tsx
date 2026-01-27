@@ -1,5 +1,3 @@
-import Variable from "@/entities/variable/types/variable";
-import Site from "@/entities/site/types/site";
 import {
   Paper,
   TableContainer,
@@ -10,54 +8,72 @@ import {
   TableBody,
   TablePagination,
   LinearProgress,
+  Box,
 } from "@mui/material";
-import { useMemo } from "react";
-import { useDisabledVariables } from "../monitor/model/useDisabledVariables";
 import useAnalyticStore from "./model/useAnalyticStore";
-import { useAnalyticSites } from "./model/useAnalyticSites";
+import { AnalyticSite, useAnalyticSites } from "./model/useAnalyticSites";
+import { useEffect } from "react";
+import { useAuth } from "@/shared/model/auth";
+import { fetchAnalyticData } from "./model/fetchCategory";
 
 type TableProps = {
-  selectedSite: Site;
+  selectedSite: AnalyticSite;
 };
 
 function AnalyticTable({ selectedSite }: TableProps) {
-  const { disabledVariables } = useDisabledVariables();
-  const { page, rowsPerPage, setPage, setRowsPerPage } = useAnalyticStore();
-  const { activeSites } = useAnalyticSites();
+  const { token } = useAuth();
+  const { fromDate, toDate } = useAnalyticStore();
+  const { activeSites, setSitePage, setSiteRowsPerPage } = useAnalyticSites();
 
-  const siteState = Object.values(activeSites)
-    .flatMap((r) => r.sites)
-    .find((s) => s.id === selectedSite.id);
+  const record = activeSites[selectedSite.category.id];
+  const siteState = record.sites.find((s) => s.id === selectedSite.id);
+  const variables = record.variables;
 
   const loading = siteState?.loading ?? false;
   const infoData = siteState?.result?.content ?? [];
   const totalRows = siteState?.result?.total ?? 0;
+  const page = siteState?.page ?? 0;
+  const rowsPerPage = siteState?.rowsPerPage ?? 10;
 
-  const infoVariables = useMemo(() => {
-    if (infoData.length > 0) {
-      return infoData[0].values.map((v) => v.variable);
-    }
-    return [];
-  }, [infoData]);
+  const { disabledVariables } = useAnalyticStore();
 
-  const handleChangePage = (_: unknown, newPage: number) => setPage(newPage);
+  const isDisabled = (varId: number) => {
+    const key = `${selectedSite.category.id}-${selectedSite.id}`;
+    return disabledVariables[key]?.includes(varId);
+  };
+
+  useEffect(() => {
+    if (!token || !siteState) return;
+
+    if (loading) return;
+
+    fetchAnalyticData(token, siteState, page, rowsPerPage, fromDate, toDate);
+  }, [page, rowsPerPage, fromDate, toDate, token, selectedSite.id]);
+
+  const handleChangePage = (_: unknown, newPage: number) => {
+    setSitePage(selectedSite.category.id, selectedSite.id, newPage);
+  };
 
   const handleChangeRowsPerPage = (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
+    setSiteRowsPerPage(
+      selectedSite.category.id,
+      selectedSite.id,
+      parseInt(event.target.value, 10),
+    );
   };
 
   return (
     <Paper
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        width: "100%",
-        boxShadow: "none",
-        position: "relative",
-      }}
+      elevation={0}
       className="border border-gray-200 rounded-lg! h-96"
+      sx={{
+        width: "100%",
+        position: "relative",
+        display: "grid",
+        gridTemplateRows: "1fr auto",
+      }}
     >
       {loading && (
         <LinearProgress
@@ -67,93 +83,95 @@ function AnalyticTable({ selectedSite }: TableProps) {
             left: 0,
             right: 0,
             zIndex: 2,
-            borderTopLeftRadius: "8px",
-            borderTopRightRadius: "8px",
+            borderTopLeftRadius: "12px",
+            borderTopRightRadius: "12px",
           }}
         />
       )}
 
-      <TableContainer
-        sx={{
-          flex: 1,
-          width: "100%",
-          opacity: loading ? 0.5 : 1,
-          transition: "opacity 0.2s",
-        }}
-      >
-        <Table stickyHeader size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell
-                align="center"
-                sx={{
-                  whiteSpace: "nowrap",
-                  backgroundColor: "#f5f5f5",
-                  fontWeight: "bold",
-                }}
-              >
-                #
-              </TableCell>
-              <TableCell
-                sx={{
-                  whiteSpace: "nowrap",
-                  backgroundColor: "#f5f5f5",
-                  fontWeight: "bold",
-                }}
-              >
-                Время измерения
-              </TableCell>
-              {infoVariables
-                .filter((v) => !disabledVariables.includes(v.id))
-                .map((v) => (
-                  <TableCell
-                    key={v.id}
-                    sx={{
-                      whiteSpace: "nowrap",
-                      backgroundColor: "#f5f5f5",
-                      fontWeight: "bold",
-                    }}
-                  >
-                    {v.name}
-                  </TableCell>
-                ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {infoData.map((group, i) => (
-              <TableRow key={group.group.id} hover>
-                <TableCell align="center">
-                  {page * rowsPerPage + i + 1}
+      <Box sx={{ overflowX: "auto", width: "100%", minHeight: 0 }}>
+        <TableContainer
+          sx={{
+            width: "100%",
+            overflow: "visible",
+            opacity: loading ? 0.5 : 1,
+            transition: "opacity 0.2s",
+          }}
+        >
+          <Table stickyHeader size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell
+                  align="center"
+                  sx={{
+                    whiteSpace: "nowrap",
+                    backgroundColor: "#f5f5f5",
+                    fontWeight: "bold",
+                  }}
+                >
+                  #
                 </TableCell>
-                <TableCell sx={{ whiteSpace: "nowrap" }}>
-                  {new Date(group.group.date_utc).toLocaleString("ru-RU", {
-                    day: "2-digit",
-                    month: "2-digit",
-                    year: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                <TableCell
+                  sx={{
+                    whiteSpace: "nowrap",
+                    backgroundColor: "#f5f5f5",
+                    fontWeight: "bold",
+                  }}
+                >
+                  Время измерения
                 </TableCell>
-                {infoVariables
-                  .filter((v) => !disabledVariables.includes(v.id))
-                  .map((variable) => {
-                    const value = group.values.find(
-                      (e) => e.variable.id === variable.id,
-                    );
-                    return (
-                      <TableCell
-                        key={variable.id}
-                        sx={{ whiteSpace: "nowrap" }}
-                      >
-                        {value?.value ?? "-"}
-                      </TableCell>
-                    );
-                  })}
+                {variables
+                  .filter((v) => !isDisabled(v.id))
+                  .map((v) => (
+                    <TableCell
+                      key={v.id}
+                      sx={{
+                        whiteSpace: "nowrap",
+                        backgroundColor: "#f5f5f5",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      {v.name}
+                    </TableCell>
+                  ))}
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            </TableHead>
+            <TableBody>
+              {infoData.map((group, i) => (
+                <TableRow key={group.group.id} hover>
+                  <TableCell align="center">
+                    {page * rowsPerPage + i + 1}
+                  </TableCell>
+                  <TableCell sx={{ whiteSpace: "nowrap" }}>
+                    {new Date(group.group.date_utc).toLocaleString("ru-RU", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </TableCell>
+                  {variables
+                    .filter((v) => !isDisabled(v.id))
+                    .map((variable) => {
+                      const value = group.values.find(
+                        (e) => e.variable.id === variable.id,
+                      );
+                      return (
+                        <TableCell
+                          key={variable.id}
+                          sx={{ whiteSpace: "nowrap" }}
+                        >
+                          {value?.value ?? "-"}
+                        </TableCell>
+                      );
+                    })}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Box>
 
       <TablePagination
         component="div"

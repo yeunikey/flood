@@ -4,16 +4,24 @@ import Site from "@/entities/site/types/site";
 import Layer from "@/entities/layer/types/layer";
 import { Category } from "@/entities/category/types/categories";
 import { GroupedData, PaginatedResult } from "@/shared/model/types/response";
-import useAnalyticStore from "./useAnalyticStore";
+import useAnalyticStore from "@/features/analytic/model/useAnalyticStore";
+import Variable from "@/entities/variable/types/variable";
 
 export type AnalyticSite = Site & {
   result: PaginatedResult<GroupedData> | null;
   loading: boolean;
+
+  chartResult: GroupedData[] | null;
+  chartLoading: boolean;
+
   category: Category;
+  page: number;
+  rowsPerPage: number;
 };
 
 export type SiteRecord = {
   category: Category;
+  variables: Variable[];
   sites: AnalyticSite[];
 };
 
@@ -26,12 +34,32 @@ type State = {
   selectAll: (pools: Pool[], layers: Layer[]) => void;
   clearSites: () => void;
 
+  setVariables: (categoryId: number, variables: Variable[]) => void;
+
+  setSitePage: (categoryId: number, siteId: number, page: number) => void;
+  setSiteRowsPerPage: (
+    categoryId: number,
+    siteId: number,
+    rows: number,
+  ) => void;
+
   setSiteResult: (
     categoryId: number,
     siteId: number,
     result: PaginatedResult<GroupedData>,
   ) => void;
   setSiteLoading: (
+    categoryId: number,
+    siteId: number,
+    loading: boolean,
+  ) => void;
+
+  setSiteChartResult: (
+    categoryId: number,
+    siteId: number,
+    result: GroupedData[],
+  ) => void;
+  setSiteChartLoading: (
     categoryId: number,
     siteId: number,
     loading: boolean,
@@ -56,7 +84,16 @@ export const useAnalyticSites = create<State>((set) => ({
         ? currentSites.filter((s) => s.id !== site.id)
         : [
             ...currentSites,
-            { ...site, result: null, loading: false, category },
+            {
+              ...site,
+              result: null,
+              loading: false,
+              chartResult: null,
+              chartLoading: false,
+              category,
+              page: 0,
+              rowsPerPage: 10,
+            },
           ];
 
       if (newSites.length === 0) {
@@ -70,6 +107,7 @@ export const useAnalyticSites = create<State>((set) => ({
           ...state.activeSites,
           [categoryId]: {
             category,
+            variables: currentRecord?.variables ?? [],
             sites: newSites,
           },
         },
@@ -85,7 +123,11 @@ export const useAnalyticSites = create<State>((set) => ({
 
       const add = (category: Category, sites: Site[]) => {
         if (!newActiveSites[category.id]) {
-          newActiveSites[category.id] = { category, sites: [] };
+          newActiveSites[category.id] = {
+            category,
+            variables: [],
+            sites: [],
+          };
         }
 
         sites.forEach((site) => {
@@ -96,7 +138,11 @@ export const useAnalyticSites = create<State>((set) => ({
               ...site,
               result: null,
               loading: false,
+              chartResult: null,
+              chartLoading: false,
               category,
+              page: 0,
+              rowsPerPage: 10,
             });
           }
         });
@@ -123,6 +169,56 @@ export const useAnalyticSites = create<State>((set) => ({
 
   clearSites: () => set({ activeSites: {} }),
 
+  setVariables: (categoryId, variables) =>
+    set((state) => {
+      const record = state.activeSites[categoryId];
+      if (!record) return state;
+
+      return {
+        activeSites: {
+          ...state.activeSites,
+          [categoryId]: {
+            ...record,
+            variables,
+          },
+        },
+      };
+    }),
+
+  setSitePage: (categoryId, siteId, page) =>
+    set((state) => {
+      const record = state.activeSites[categoryId];
+      if (!record) return state;
+
+      const updatedSites = record.sites.map((s) =>
+        s.id === siteId ? { ...s, page } : s,
+      );
+
+      return {
+        activeSites: {
+          ...state.activeSites,
+          [categoryId]: { ...record, sites: updatedSites },
+        },
+      };
+    }),
+
+  setSiteRowsPerPage: (categoryId, siteId, rowsPerPage) =>
+    set((state) => {
+      const record = state.activeSites[categoryId];
+      if (!record) return state;
+
+      const updatedSites = record.sites.map((s) =>
+        s.id === siteId ? { ...s, rowsPerPage, page: 0 } : s,
+      );
+
+      return {
+        activeSites: {
+          ...state.activeSites,
+          [categoryId]: { ...record, sites: updatedSites },
+        },
+      };
+    }),
+
   setSiteResult: (categoryId, siteId, result) =>
     set((state) => {
       const record = state.activeSites[categoryId];
@@ -137,15 +233,18 @@ export const useAnalyticSites = create<State>((set) => ({
         [categoryId]: { ...record, sites: updatedSites },
       };
 
-      // Recalculate global min/max dates
       let min: Date | null = null;
       let max: Date | null = null;
 
       Object.values(newActiveSites).forEach((rec) => {
         rec.sites.forEach((site) => {
           if (site.result) {
-            const siteMin = site.result.minDate ? new Date(site.result.minDate) : null;
-            const siteMax = site.result.maxDate ? new Date(site.result.maxDate) : null;
+            const siteMin = site.result.minDate
+              ? new Date(site.result.minDate)
+              : null;
+            const siteMax = site.result.maxDate
+              ? new Date(site.result.maxDate)
+              : null;
 
             if (siteMin && (!min || siteMin < min)) {
               min = siteMin;
@@ -171,6 +270,40 @@ export const useAnalyticSites = create<State>((set) => ({
 
       const updatedSites = record.sites.map((s) =>
         s.id === siteId ? { ...s, loading } : s,
+      );
+
+      return {
+        activeSites: {
+          ...state.activeSites,
+          [categoryId]: { ...record, sites: updatedSites },
+        },
+      };
+    }),
+
+  setSiteChartResult: (categoryId, siteId, result) =>
+    set((state) => {
+      const record = state.activeSites[categoryId];
+      if (!record) return state;
+
+      const updatedSites = record.sites.map((s) =>
+        s.id === siteId ? { ...s, chartResult: result } : s,
+      );
+
+      return {
+        activeSites: {
+          ...state.activeSites,
+          [categoryId]: { ...record, sites: updatedSites },
+        },
+      };
+    }),
+
+  setSiteChartLoading: (categoryId, siteId, loading) =>
+    set((state) => {
+      const record = state.activeSites[categoryId];
+      if (!record) return state;
+
+      const updatedSites = record.sites.map((s) =>
+        s.id === siteId ? { ...s, chartLoading: loading } : s,
       );
 
       return {

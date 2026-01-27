@@ -9,15 +9,15 @@ function TablesWidget() {
   if (categories.length === 0) return null;
 
   return (
-    <div className="mt-12 mb-24 px-3 space-y-12!">
+    <div className="p-3 pt-6 mb-24 space-y-12! w-full max-w-full">
       {categories.map(([category, record]) => (
-        <div key={category} className="space-y-3!">
+        <div key={category} className="space-y-6!">
           <Typography variant="h5" fontWeight={500}>
             {record.category.name}
           </Typography>
 
           {record.sites.map((site, i) => (
-            <div className="space-y-2!" key={i}>
+            <div className="space-y-2! max-w-full" key={i}>
               <Typography variant="h6" fontWeight={500}>
                 {site.name}
               </Typography>

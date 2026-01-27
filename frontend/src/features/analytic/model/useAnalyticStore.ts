@@ -1,6 +1,6 @@
-import Variable from "@/entities/variable/types/variable";
-import { GroupedData } from "@/types";
 import { create } from "zustand";
+import { GroupedData } from "@/types";
+import Variable from "@/entities/variable/types/variable";
 
 type ViewMode = "table" | "chart";
 
@@ -17,7 +17,9 @@ interface AnalyticState {
 
   variables: Record<string, Variable[]>;
   infoValues: Record<string, GroupedData[]>;
-  disabledVariables: Record<number, number[]>;
+
+  // Key: `${categoryId}-${siteId}`, Value: array of disabled variable IDs
+  disabledVariables: Record<string, number[]>;
 
   setVariableCollapse: (value: boolean) => void;
   setFromDate: (date: Date | null) => void;
@@ -27,9 +29,28 @@ interface AnalyticState {
   setPage: (page: number) => void;
   setRowsPerPage: (rows: number) => void;
   setGlobalRange: (min: Date | null, max: Date | null) => void;
+
+  toggleDisabledVariable: (
+    categoryId: number,
+    siteId: number,
+    variableId: number,
+  ) => void;
+  
+  // Новый метод для массового обновления
+  setDisabledVariables: (
+    categoryId: number,
+    siteId: number,
+    variableIds: number[],
+  ) => void;
+
+  isVariableDisabled: (
+    categoryId: number,
+    siteId: number,
+    variableId: number,
+  ) => boolean;
 }
 
-const useAnalyticStore = create<AnalyticState>((set) => ({
+const useAnalyticStore = create<AnalyticState>((set, get) => ({
   variableCollapse: false,
   fromDate: null,
   toDate: null,
@@ -52,6 +73,38 @@ const useAnalyticStore = create<AnalyticState>((set) => ({
   setRowsPerPage: (rowsPerPage) => set({ rowsPerPage, page: 0 }),
   setGlobalRange: (globalMinDate, globalMaxDate) =>
     set({ globalMinDate, globalMaxDate }),
+
+  toggleDisabledVariable: (categoryId, siteId, variableId) =>
+    set((state) => {
+      const key = `${categoryId}-${siteId}`;
+      const currentList = state.disabledVariables[key] || [];
+      const exists = currentList.includes(variableId);
+
+      const newList = exists
+        ? currentList.filter((id) => id !== variableId)
+        : [...currentList, variableId];
+
+      return {
+        disabledVariables: {
+          ...state.disabledVariables,
+          [key]: newList,
+        },
+      };
+    }),
+
+  setDisabledVariables: (categoryId, siteId, variableIds) =>
+    set((state) => ({
+      disabledVariables: {
+        ...state.disabledVariables,
+        [`${categoryId}-${siteId}`]: variableIds,
+      },
+    })),
+
+  isVariableDisabled: (categoryId, siteId, variableId) => {
+    const key = `${categoryId}-${siteId}`;
+    const list = get().disabledVariables[key];
+    return list ? list.includes(variableId) : false;
+  },
 }));
 
 export default useAnalyticStore;
