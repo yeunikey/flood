@@ -484,6 +484,92 @@ export class DataService {
     return result;
   }
 
+  async findGroupsByCategoryAndSiteCodePaginatedWithDate(
+    categoryId: number,
+    siteCode: string,
+    options: {
+      page?: number;
+      limit?: number;
+      start?: Date;
+      end?: Date;
+    } = {},
+  ) {
+    const page = Math.max(1, options.page ?? 1);
+    const limit = Math.max(1, options.limit ?? 20);
+    const offset = (page - 1) * limit;
+
+    const allDates = await this.groupRepo
+      .createQueryBuilder('group')
+      .leftJoin('group.category', 'category')
+      .leftJoin('group.site', 'site')
+      .where('category.id = :categoryId', { categoryId })
+      .andWhere('site.code = :siteCode', { siteCode })
+      .select([
+        'MIN(group.date_utc) as "minDate"',
+        'MAX(group.date_utc) as "maxDate"',
+      ])
+      .getRawOne<{ minDate: Date; maxDate: Date }>();
+
+    const query = this.groupRepo
+      .createQueryBuilder('group')
+      .leftJoinAndSelect('group.site', 'site')
+      .leftJoinAndSelect('group.category', 'category')
+      .leftJoinAndSelect('group.method', 'method')
+      .leftJoinAndSelect('group.source', 'source')
+      .leftJoinAndSelect('group.qcl', 'qcl')
+      .where('category.id = :categoryId', { categoryId })
+      .andWhere('site.code = :siteCode', { siteCode });
+
+    if (options.start) {
+      query.andWhere('group.date_utc >= :start', { start: options.start });
+    }
+    if (options.end) {
+      query.andWhere('group.date_utc <= :end', { end: options.end });
+    }
+
+    const [groups, total] = await query
+      .orderBy('group.date_utc', 'ASC')
+      .skip(offset)
+      .take(limit)
+      .getManyAndCount();
+
+    if (groups.length === 0) {
+      return {
+        content: [],
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        minDate: allDates?.minDate || null,
+        maxDate: allDates?.maxDate || null,
+      };
+    }
+
+    const groupIds = groups.map((g) => g.id);
+
+    const dataValues = await this.dataValueRepo.find({
+      where: { group: { id: In(groupIds) } },
+      relations: ['variable', 'variable.unit'],
+    });
+
+    const content = groups.map((group) => ({
+      group,
+      values: dataValues
+        .filter((dv) => dv.group.id === group.id)
+        .map(({ group: _, ...dvWithoutGroup }) => dvWithoutGroup),
+    }));
+
+    return {
+      content,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      minDate: allDates?.minDate || null,
+      maxDate: allDates?.maxDate || null,
+    };
+  }
+
   async findById(id: number): Promise<DataValue | null> {
     return this.dataValueRepo.findOne({
       where: { id },

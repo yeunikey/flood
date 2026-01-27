@@ -8,42 +8,39 @@ import {
   List,
 } from "@mui/material";
 import SiteRow from "./SiteRow";
+import { Category } from "@/entities/category/types/categories";
 
 interface CategoryGroupProps {
-  categoryName: string;
-  categoryDescription?: string;
+  category: Category;
   sites: Site[];
   expandedId: string;
   isExpanded: boolean;
   onToggleExpand: (id: string) => void;
-  onToggleAll: (enabled: boolean) => void;
   activeSites: Site[];
-  toggleSite: (site: Site) => void;
+  toggleSite: (category: Category, site: Site) => void;
   poolName?: string;
   activeTooltipId: string | null;
   onTooltipToggle: (id: string) => void;
 }
 
-const CategoryGroup = ({
-  categoryName,
-  categoryDescription,
+function CategoryGroup({
+  category,
   sites,
   expandedId,
   isExpanded,
   onToggleExpand,
-  onToggleAll,
   activeSites,
   toggleSite,
   poolName,
   activeTooltipId,
   onTooltipToggle,
-}: CategoryGroupProps) => {
+}: CategoryGroupProps) {
   return (
     <div>
       <ListItemButton sx={{ pl: 4 }} onClick={() => onToggleExpand(expandedId)}>
         <ListItemText
-          primary={<Typography fontWeight={500}>{categoryName}</Typography>}
-          secondary={categoryDescription}
+          primary={<Typography fontWeight={500}>{category.name}</Typography>}
+          secondary={category.description}
         />
         {isExpanded ? <ExpandLess /> : <ExpandMore />}
       </ListItemButton>
@@ -55,6 +52,7 @@ const CategoryGroup = ({
             .map((site) => (
               <SiteRow
                 key={`${expandedId}-${site.id}`}
+                category={category}
                 uniqueKey={`${expandedId}-${site.id}`}
                 site={site}
                 isActive={activeSites.some((s) => s.id === site.id)}
@@ -68,6 +66,6 @@ const CategoryGroup = ({
       </Collapse>
     </div>
   );
-};
+}
 
 export default CategoryGroup;

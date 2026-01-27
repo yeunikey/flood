@@ -195,4 +195,34 @@ export class DataController {
       ...result,
     };
   }
+
+  @Get('category/:id/by-site/:siteCode/paginated-date')
+  async getByCategoryAndSiteCodePaginatedWithDate(
+    @Param('id') categoryId: number,
+    @Param('siteCode') siteCode: string,
+    @Query('page') page = '1',
+    @Query('limit') limit = '20',
+    @Query('start') start?: string,
+    @Query('end') end?: string,
+  ) {
+    const pageNumber = Number(page) || 1;
+    const limitNumber = Number(limit) || 20;
+
+    const result =
+      await this.dataService.findGroupsByCategoryAndSiteCodePaginatedWithDate(
+        categoryId,
+        siteCode,
+        {
+          page: pageNumber,
+          limit: limitNumber,
+          start: start ? new Date(start) : undefined,
+          end: end ? new Date(end) : undefined,
+        },
+      );
+
+    return {
+      statusCode: 200,
+      data: result,
+    };
+  }
 }

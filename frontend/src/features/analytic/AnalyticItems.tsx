@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import {
   Box,
   Button,
@@ -12,124 +12,68 @@ import { ExpandLess, ExpandMore } from "@mui/icons-material";
 
 import { usePools } from "@/entities/pool/model/usePools";
 import { useLayers } from "@/entities/layer/model/useLayers";
-import Layer from "@/entities/layer/types/layer";
-import Site from "@/entities/site/types/site";
 import PoolGroup from "./PoolGroup";
 import CategoryGroup from "./CategoryGroup";
-import { useMonitorSites } from "../monitor/model/useMonitorSites";
-import Pool from "@/entities/pool/types/pool";
+import { useAnalyticSites } from "./model/useAnalyticSites";
+import Site from "@/entities/site/types/site";
+import { Category } from "@/entities/category/types/categories";
+import { fetchSite } from "./model/fetchCategory";
 
 function AnalyticItems() {
   const { pools } = usePools();
   const { layers } = useLayers();
-  const { activeSites, setActiveSites, activePools, setActivePools } =
-    useMonitorSites();
+  const {
+    activeSites,
+    activePools,
+    selectAll,
+    clearSites,
+    toggleSite,
+    togglePool,
+  } = useAnalyticSites();
 
   const [expanded, setExpanded] = useState<string[]>([]);
   const [activeTooltipId, setActiveTooltipId] = useState<string | null>(null);
 
-  const toggleExpand = (id: string) => {
-    if (id.startsWith("pool-")) {
-      const poolId = Number(id.replace("pool-", ""));
-      const pool = pools.find((p) => p.id === poolId);
-
-      if (pool) {
-        const isPoolActive = activePools.some((p) => p.id === poolId);
-        if (isPoolActive) {
-          setActivePools(activePools.filter((p) => p.id !== poolId));
-        } else {
-          setActivePools([...activePools, pool]);
-        }
-      }
-    } else {
-      setExpanded((prev) =>
-        prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
-      );
-    }
-  };
-
-  const handleTooltipToggle = (id: string) => {
-    setActiveTooltipId((prev) => (prev === id ? null : id));
-  };
-
-  const toggleSite = (site: Site) => {
-    const isActive = activeSites.some((s) => s.id === site.id);
-    if (isActive) {
-      setActiveSites(activeSites.filter((s) => s.id !== site.id));
-    } else {
-      setActiveSites([...activeSites, site]);
-    }
-  };
-
-  const handleToggleAll = (enabled: boolean) => {
-    const allSites: Site[] = [
-      ...pools.flatMap((p) => p.sites),
-      ...layers.flatMap((l) =>
-        l.sites.filter(
-          (s) => !pools.some((p) => p.sites.some((ps) => ps.id === s.id)),
-        ),
-      ),
-    ];
-
-    if (enabled) {
-      setActiveSites(allSites);
-    } else {
-      setActiveSites([]);
-    }
-  };
-
-  const handlePoolToggleAll = (pool: Pool, enabled: boolean) => {
-    const poolSiteIds = new Set(pool.sites.map((s) => s.id));
-    if (enabled) {
-      const sitesToAdd = pool.sites.filter(
-        (s) => !activeSites.some((active) => active.id === s.id),
-      );
-      setActiveSites([...activeSites, ...sitesToAdd]);
-    } else {
-      setActiveSites(activeSites.filter((s) => !poolSiteIds.has(s.id)));
-    }
-  };
-
-  const handleCategoryToggleAll = (
-    layer: Layer,
-    pool: Pool,
-    enabled: boolean,
-  ) => {
-    const targetSites = layer.sites.filter((s) =>
-      pool.sites.some((ps) => ps.id === s.id),
+  const toggleExpand = useCallback((id: string) => {
+    setExpanded((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
     );
-    const targetIds = new Set(targetSites.map((s) => s.id));
+  }, []);
 
-    if (enabled) {
-      const sitesToAdd = targetSites.filter(
-        (s) => !activeSites.some((active) => active.id === s.id),
-      );
-      setActiveSites([...activeSites, ...sitesToAdd]);
-    } else {
-      setActiveSites(activeSites.filter((s) => !targetIds.has(s.id)));
+  const handleToggleSite = (category: Category, site: Site) => {
+    const isAlreadyActive = activeSites[category.id]?.sites.some(
+      (s) => s.id === site.id,
+    );
+
+    toggleSite(category, site);
+
+    if (!isAlreadyActive) {
+      fetchSite(category, site);
     }
   };
 
-  const allPoolSiteIds = pools.flatMap((p) => p.sites.map((s) => s.id));
-  const standaloneSites = layers
-    .map((layer) => ({
-      ...layer,
-      sites: layer.sites.filter((site) => !allPoolSiteIds.includes(site.id)),
-    }))
-    .filter((l) => l.sites.length > 0);
+  const handleTooltipToggle = useCallback((id: string) => {
+    setActiveTooltipId((prev) => (prev === id ? null : id));
+  }, []);
 
-  const handleStandaloneToggleAll = (layer: Layer, enabled: boolean) => {
-    if (enabled) {
-      const newSites = layer.sites.filter(
-        (site) => !activeSites.some((s) => s.id === site.id),
-      );
-      setActiveSites([...activeSites, ...newSites]);
-    } else {
-      setActiveSites(
-        activeSites.filter((s) => !layer.sites.some((ls) => ls.id === s.id)),
-      );
+  const handleToggleAll = () => {
+    if (Object.keys(activeSites).length > 0) {
+      clearSites();
+      return;
     }
   };
+
+  const standaloneSites = useMemo(() => {
+    const allPoolSiteIds = new Set(
+      pools.flatMap((p) => p.sites.map((s) => s.id)),
+    );
+    return layers
+      .map((layer) => ({
+        ...layer,
+        sites: layer.sites.filter((site) => !allPoolSiteIds.has(site.id)),
+      }))
+      .filter((l) => l.sites.length > 0);
+  }, [pools, layers]);
 
   return (
     <List dense className="pb-32!">
@@ -139,9 +83,9 @@ function AnalyticItems() {
           color="error"
           size="small"
           fullWidth
-          onClick={() => handleToggleAll(false)}
+          onClick={handleToggleAll}
         >
-          Выкл. все
+          {"Выкл. все"}
         </Button>
       </Box>
 
@@ -151,12 +95,11 @@ function AnalyticItems() {
           pool={pool}
           layers={layers}
           isExpanded={activePools.some((p) => p.id === pool.id)}
-          onToggleExpand={toggleExpand}
+          onToggleExpand={() => togglePool(pool)}
           expandedList={expanded}
-          onTogglePoolAll={(enabled) => handlePoolToggleAll(pool, enabled)}
-          onToggleCategoryAll={handleCategoryToggleAll}
+          onExpandGroup={toggleExpand}
           activeSites={activeSites}
-          toggleSite={toggleSite}
+          toggleSite={handleToggleSite}
           activeTooltipId={activeTooltipId}
           onTooltipToggle={handleTooltipToggle}
         />
@@ -166,38 +109,33 @@ function AnalyticItems() {
         <div>
           <ListItemButton
             sx={{ pl: 3 }}
-            onClick={() => toggleExpand(`standalone`)}
+            onClick={() => toggleExpand("standalone")}
           >
             <ListItemText
               primary={
                 <Typography fontWeight={600}>Не входят в бассейн</Typography>
               }
             />
-            {expanded.includes(`standalone`) ? <ExpandLess /> : <ExpandMore />}
+            {expanded.includes("standalone") ? <ExpandLess /> : <ExpandMore />}
           </ListItemButton>
 
           <Collapse
-            in={expanded.includes(`standalone`)}
+            in={expanded.includes("standalone")}
             timeout="auto"
             unmountOnExit
           >
             {standaloneSites.map((layer) => (
               <CategoryGroup
                 key={layer.category.id}
-                categoryName={layer.category.name}
-                categoryDescription={layer.category.description}
+                category={layer.category}
                 sites={layer.sites}
                 expandedId={`standalone-cat-${layer.category.id}`}
                 isExpanded={expanded.includes(
                   `standalone-cat-${layer.category.id}`,
                 )}
                 onToggleExpand={toggleExpand}
-                onToggleAll={(enabled) =>
-                  handleStandaloneToggleAll(layer, enabled)
-                }
-                activeSites={activeSites}
-                toggleSite={toggleSite}
-                poolName={undefined}
+                activeSites={activeSites[layer.category.id]?.sites || []}
+                toggleSite={handleToggleSite}
                 activeTooltipId={activeTooltipId}
                 onTooltipToggle={handleTooltipToggle}
               />

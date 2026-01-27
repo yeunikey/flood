@@ -21,7 +21,6 @@ function SiteInfo() {
             orientation="vertical"
             timeout={300}
             unmountOnExit>
-            {/* Добавляем bg-white, чтобы перекрывать карту */}
             <div className="relative h-96 bg-white flex flex-col z-10">
 
                 <Divider orientation="horizontal" />
@@ -57,7 +56,6 @@ function SiteInfo() {
                         <Tab label="Чарты" icon={<BarChartIcon />} iconPosition="start" />
                     </Tabs>
 
-                    {/* ВАЖНО: overflow-hidden и relative здесь критичны */}
                     <div className="flex-1 min-w-0 relative overflow-hidden flex flex-col p-4">
                         <TableInfo />
                     </div>

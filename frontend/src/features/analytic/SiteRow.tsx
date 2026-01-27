@@ -13,6 +13,7 @@ import {
   styled,
 } from "@mui/material";
 import InfoIcon from "@mui/icons-material/Info";
+import { Category } from "@/entities/category/types/categories";
 
 const LightTooltip = styled(({ className, ...props }: TooltipProps) => (
   <Tooltip {...props} classes={{ popper: className }} />
@@ -27,23 +28,25 @@ const LightTooltip = styled(({ className, ...props }: TooltipProps) => (
 
 interface SiteRowProps {
   site: Site;
+  category: Category;
   isActive: boolean;
   poolName?: string;
-  toggleSite: (site: Site) => void;
+  toggleSite: (category: Category, site: Site) => void;
   activeTooltipId: string | null;
   onTooltipToggle: (id: string) => void;
   uniqueKey: string;
 }
 
-const SiteRow = ({
+function SiteRow({
   site,
+  category,
   isActive,
   poolName,
   toggleSite,
   activeTooltipId,
   onTooltipToggle,
   uniqueKey,
-}: SiteRowProps) => {
+}: SiteRowProps) {
   return (
     <ListItem
       sx={{ pl: 8 }}
@@ -108,7 +111,7 @@ const SiteRow = ({
           <Switch
             edge="end"
             checked={isActive}
-            onChange={() => toggleSite(site)}
+            onChange={() => toggleSite(category, site)}
           />
         </Box>
       }
@@ -123,6 +126,6 @@ const SiteRow = ({
       />
     </ListItem>
   );
-};
+}
 
 export default SiteRow;

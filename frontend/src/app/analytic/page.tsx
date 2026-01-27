@@ -1,16 +1,19 @@
 "use client";
 
 import View from "@/shared/ui/View";
-import NavigationWidget from "@/widgets/monitor/NavigationWidget";
-import { Divider, Grid } from "@mui/material";
+import { Box, Divider, Grid, Typography } from "@mui/material";
 import { useAuth } from "@/shared/model/auth";
 import { useEffect } from "react";
 import { fetchLayers } from "@/entities/layer/api/fetchLayers";
 import { fetchPools } from "@/entities/pool/api/fetchPools";
 import AnalyticNavigation from "@/widgets/analytic/AnalyticNavigation";
+import ToolsWidget from "@/widgets/analytic/ToolsWidget";
+import useAnalyticStore from "@/features/analytic/model/useAnalyticStore";
+import TablesWidget from "@/widgets/analytic/TablesWidget";
 
 export default function Analytic() {
   const { token } = useAuth();
+  const { viewMode } = useAnalyticStore();
 
   useEffect(() => {
     if (!token) return;
@@ -20,7 +23,7 @@ export default function Analytic() {
 
   return (
     <View links={["Панель", "Аналитика"]} className="">
-      <Grid container wrap="nowrap" sx={{ height: "100%" }}>
+      <Grid container wrap="nowrap" sx={{ minHeight: "100%" }}>
         <Grid
           sx={{
             width: 96 * 3.5,
@@ -42,7 +45,17 @@ export default function Analytic() {
             minWidth: 0,
           }}
         >
-          analytic widget
+          <ToolsWidget />
+
+          {viewMode === "table" ? (
+            <TablesWidget />
+          ) : (
+            <Box p={4} display="flex" justifyContent="center">
+              <Typography color="textSecondary">
+                График (Placeholder)
+              </Typography>
+            </Box>
+          )}
         </Grid>
       </Grid>
     </View>
