@@ -137,7 +137,7 @@ function ToolsWidget() {
             "&:hover": { bgcolor: "#1565c0" },
           }}
         >
-          {showDependencies ? "Построить зависимости" : "Обратно"}
+          {!showDependencies ? "Построить зависимости" : "Обратно"}
         </Button>
       </div>
     </LocalizationProvider>

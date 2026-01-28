@@ -63,8 +63,8 @@ export const fetchAnalyticData = async (
   site: AnalyticSite,
   page: number,
   rowsPerPage: number,
-  fromDate: Date | null,
-  toDate: Date | null,
+  start: Date | null,
+  end: Date | null,
 ) => {
   const { setSiteLoading, setSiteResult, setVariables, activeSites } =
     useAnalyticSites.getState();
@@ -78,12 +78,12 @@ export const fetchAnalyticData = async (
     limit: rowsPerPage.toString(),
   };
 
-  if (fromDate) {
-    params.minDate = fromDate.toISOString();
+  if (start) {
+    params.start = start.toISOString();
   }
 
-  if (toDate) {
-    params.maxDate = toDate.toISOString();
+  if (end) {
+    params.end = end.toISOString();
   }
 
   const categoryRecord = activeSites[category.id];

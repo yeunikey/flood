@@ -64,113 +64,136 @@ function SpatialGeoJson() {
     let isMounted = true;
     const sourceId = "spatial-source";
     const layerId = "spatial-layer";
-    const outlineLayerId = "spatial-layer-outline"; // ID для слоя обводки
+    const outlineLayerId = "spatial-layer-outline";
 
     const cleanup = () => {
       if (popupRef.current) popupRef.current.remove();
 
-      // Проверяем, существует ли стиль карты перед удалением слоев
-      // Это предотвращает ошибку "getOwnLayer", если карта уже уничтожена
-      if (!map || !map.getStyle()) return;
+      try {
+        if (!map || !map.getStyle()) return;
 
-      if (map.getLayer(outlineLayerId)) map.removeLayer(outlineLayerId);
-      if (map.getLayer(layerId)) map.removeLayer(layerId);
-      if (map.getSource(sourceId)) map.removeSource(sourceId);
+        if (map.getLayer(outlineLayerId)) map.removeLayer(outlineLayerId);
+        if (map.getLayer(layerId)) map.removeLayer(layerId);
+        if (map.getSource(sourceId)) map.removeSource(sourceId);
+      } catch (e) {
+        // silent catch
+      }
     };
-
-    cleanup();
-
-    map.addSource(sourceId, {
-      type: "vector",
-      tiles: [
-        `http://localhost:3001/v1/tiles/server/${activeTileId}/{z}/{x}/{y}.pbf`,
-      ],
-      minzoom: 0,
-      maxzoom: 14,
-    });
 
     const sourceLayer = activeTileId.replace(/-/g, "");
 
     const initLayer = async () => {
       let fillColorExpression: FillColorExpression = "#0080ff";
 
-      if (activeSpatial.style.type === "solid") {
-        fillColorExpression = activeSpatial.style.fillColor || "#0080ff";
-      } else if (
-        activeSpatial.style.type === "gradient" &&
-        activeSpatial.style.gradient
-      ) {
-        const { variable, minColor, maxColor } = activeSpatial.style.gradient;
-        let min = 0;
-        let max = 100;
+      try {
+        if (activeSpatial.style.type === "solid") {
+          fillColorExpression = activeSpatial.style.fillColor || "#0080ff";
+        } else if (
+          activeSpatial.style.type === "gradient" &&
+          activeSpatial.style.gradient
+        ) {
+          const { variable, minColor, maxColor } = activeSpatial.style.gradient;
+          let min = 0;
+          let max = 100;
 
-        const stats = await findMinMax(
-          `http://localhost:3001/v1/tiles/server/${activeTileId}.json`,
-          variable,
-        );
+          const stats = await findMinMax(
+            `http://localhost:3001/v1/tiles/server/${activeTileId}.json`,
+            variable,
+          );
 
-        if (stats) {
-          min = stats.minValue;
-          max = stats.maxValue;
+          if (stats) {
+            min = stats.minValue;
+            max = stats.maxValue;
+          }
+
+          fillColorExpression = [
+            "interpolate",
+            ["linear"],
+            ["get", variable],
+            min,
+            minColor,
+            max,
+            maxColor,
+          ];
         }
-
-        fillColorExpression = [
-          "interpolate",
-          ["linear"],
-          ["get", variable],
-          min,
-          minColor,
-          max,
-          maxColor,
-        ];
+      } catch (error) {
+        console.error("Error calculating style expression:", error);
       }
 
       if (!isMounted) return;
 
-      // Проверка getStyle() перед добавлением слоев также полезна
-      if (!map.getStyle()) return;
+      try {
+        // Дополнительная проверка на наличие стиля перед добавлением слоев
+        if (!map.getStyle() || !map.isStyleLoaded()) return;
 
-      const filterExpression = activeSpatial.style.gradient?.variable
-        ? ["has", activeSpatial.style.gradient.variable]
-        : undefined;
+        const filterExpression = activeSpatial.style.gradient?.variable
+          ? ["has", activeSpatial.style.gradient.variable]
+          : undefined;
 
-      // 1. Слой заливки (без обводки)
-      if (map.getSource(sourceId) && !map.getLayer(layerId)) {
-        map.addLayer({
-          id: layerId,
-          type: "fill",
-          source: sourceId,
-          "source-layer": sourceLayer,
-          paint: {
-            "fill-color":
-              fillColorExpression as DataDrivenPropertyValueSpecification<ColorSpecification>,
-            "fill-opacity": activeSpatial.style.opacity ?? 0.6,
-            // Убрали fill-outline-color, чтобы не было принудительной рамки в 1px
-          },
-          filter: filterExpression,
-        });
-      }
+        if (map.getSource(sourceId) && !map.getLayer(layerId)) {
+          map.addLayer({
+            id: layerId,
+            type: "fill",
+            source: sourceId,
+            "source-layer": sourceLayer,
+            paint: {
+              "fill-color":
+                fillColorExpression as DataDrivenPropertyValueSpecification<ColorSpecification>,
+              "fill-opacity": activeSpatial.style.opacity ?? 0.6,
+            },
+            filter: filterExpression,
+          });
+        }
 
-      // 2. Отдельный слой для обводки (Line Layer)
-      if (map.getSource(sourceId) && !map.getLayer(outlineLayerId)) {
-        const borderWidth = activeSpatial.style.borderWidth ?? 1;
+        if (map.getSource(sourceId) && !map.getLayer(outlineLayerId)) {
+          const borderWidth = activeSpatial.style.borderWidth ?? 1;
 
-        map.addLayer({
-          id: outlineLayerId,
-          type: "line",
-          source: sourceId,
-          "source-layer": sourceLayer,
-          paint: {
-            "line-color": activeSpatial.style.borderColor || "#000",
-            "line-width": borderWidth,
-            "line-opacity": borderWidth === 0 ? 0 : 1, // Полностью скрываем, если ширина 0
-          },
-          filter: filterExpression,
-        });
+          map.addLayer({
+            id: outlineLayerId,
+            type: "line",
+            source: sourceId,
+            "source-layer": sourceLayer,
+            paint: {
+              "line-color": activeSpatial.style.borderColor || "#000",
+              "line-width": borderWidth,
+              "line-opacity": borderWidth === 0 ? 0 : 1,
+            },
+            filter: filterExpression,
+          });
+        }
+      } catch (e) {
+        console.error("Error adding layers:", e);
       }
     };
 
-    initLayer();
+    const initialize = () => {
+      if (!isMounted) return;
+
+      if (!map.isStyleLoaded()) {
+        map.once("style.load", initialize);
+        return;
+      }
+
+      cleanup();
+
+      try {
+        if (!map.getSource(sourceId)) {
+          map.addSource(sourceId, {
+            type: "vector",
+            tiles: [
+              `http://localhost:3001/v1/tiles/server/${activeTileId}/{z}/{x}/{y}.pbf`,
+            ],
+            minzoom: 0,
+            maxzoom: 14,
+          });
+        }
+        initLayer();
+      } catch (e) {
+        console.error("Error adding source:", e);
+      }
+    };
+
+    initialize();
 
     const styleId = "spatial-popup-dark-theme";
     if (!document.getElementById(styleId)) {
@@ -267,6 +290,7 @@ function SpatialGeoJson() {
 
     return () => {
       isMounted = false;
+      map.off("style.load", initialize);
       map.off("mousemove", layerId, handleMouseMove);
       map.off("mouseleave", layerId, handleMouseLeave);
       cleanup();

@@ -18,39 +18,42 @@ export function MapLegend() {
     const variable = activeSpatial.style.gradient.variable;
 
     const updateStats = () => {
-      if (!map.getLayer(layerId)) return;
+      try {
+        if (!map || !map.getStyle() || !map.getLayer(layerId)) return;
 
-      const features = map.queryRenderedFeatures({ layers: [layerId] });
+        const features = map.queryRenderedFeatures({ layers: [layerId] });
 
-      if (!features.length) return;
+        if (!features.length) return;
 
-      let min = Infinity;
-      let max = -Infinity;
-      let found = false;
+        let min = Infinity;
+        let max = -Infinity;
+        let found = false;
 
-      features.forEach((f) => {
-        const val = f.properties?.[variable];
-        if (typeof val === "number") {
-          if (val < min) min = val;
-          if (val > max) max = val;
-          found = true;
-        }
-      });
-
-      if (found) {
-        setGeoJsonStats((prev) => {
-          if (prev && prev.min === min && prev.max === max) return prev;
-          return { min, max };
+        features.forEach((f) => {
+          const val = f.properties?.[variable];
+          if (typeof val === "number") {
+            if (val < min) min = val;
+            if (val > max) max = val;
+            found = true;
+          }
         });
-      }
+
+        if (found) {
+          setGeoJsonStats((prev) => {
+            if (prev && prev.min === min && prev.max === max) return prev;
+            return { min, max };
+          });
+        }
+      } catch {}
     };
 
     map.on("moveend", updateStats);
     map.on("idle", updateStats);
 
-    updateStats();
+    const timeout = setTimeout(updateStats, 500);
 
     return () => {
+      clearTimeout(timeout);
       map.off("moveend", updateStats);
       map.off("idle", updateStats);
     };
@@ -152,20 +155,6 @@ export function MapLegend() {
               </li>
             ))}
           </ul>
-          {/* {gradientStyle && (
-            <div className="px-2">
-              <div
-                className="h-2 w-full rounded-sm"
-                style={{
-                  background: `linear-gradient(to right, ${gradientStyle.minColor}, ${gradientStyle.maxColor})`,
-                }}
-              />
-              <div className="flex justify-between mt-1 text-[10px] text-gray-500 font-medium">
-                <span>{gradientStyle.minVal}</span>
-                <span>{gradientStyle.maxVal}</span>
-              </div>
-            </div>
-          )} */}
         </div>
       </div>
     </div>

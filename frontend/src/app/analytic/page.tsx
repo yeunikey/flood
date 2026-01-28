@@ -1,7 +1,7 @@
 "use client";
 
 import View from "@/shared/ui/View";
-import { Box, Divider, Typography } from "@mui/material";
+import { Box, Divider } from "@mui/material";
 import { useAuth } from "@/shared/model/auth";
 import { useEffect } from "react";
 import { fetchLayers } from "@/entities/layer/api/fetchLayers";
@@ -12,6 +12,7 @@ import useAnalyticStore from "@/features/analytic/model/useAnalyticStore";
 import TablesWidget from "@/widgets/analytic/TablesWidget";
 import VariablesSettingsModal from "@/features/analytic/modal/VariablesSettingsModal";
 import ChartWidget from "@/widgets/analytic/ChartWidget";
+import DependencyWidget from "@/widgets/analytic/DependencyWidget";
 
 export default function Analytic() {
   const { token } = useAuth();
@@ -71,7 +72,7 @@ export default function Analytic() {
             }}
           >
             {showDependencies ? (
-              <div className="test">test</div>
+              <DependencyWidget />
             ) : (
               <>
                 {viewMode === "table" ? (
