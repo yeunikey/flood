@@ -209,7 +209,7 @@ function ChartInfo() {
             variant="outlined"
             startIcon={<TuneIcon />}
             onClick={() => setSettingsOpen(true)}
-            size="small"
+            size="medium"
           >
             Переменные
           </Button>

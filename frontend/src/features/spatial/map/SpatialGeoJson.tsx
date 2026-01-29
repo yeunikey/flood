@@ -8,6 +8,7 @@ import {
   MapLayerMouseEvent,
 } from "mapbox-gl";
 import { useSpatialSettings } from "../model/useSpatialSettings";
+import { baseUrl } from "@/shared/model/api/instance";
 
 type FillColorExpression = string | (string | number | string[])[];
 
@@ -97,7 +98,7 @@ function SpatialGeoJson() {
           let max = 100;
 
           const stats = await findMinMax(
-            `http://localhost:3001/v1/tiles/server/${activeTileId}.json`,
+            `${baseUrl}/tiles/server/${activeTileId}.json`,
             variable,
           );
 
@@ -181,7 +182,7 @@ function SpatialGeoJson() {
           map.addSource(sourceId, {
             type: "vector",
             tiles: [
-              `http://localhost:3001/v1/tiles/server/${activeTileId}/{z}/{x}/{y}.pbf`,
+              `${baseUrl}/tiles/server/${activeTileId}/{z}/{x}/{y}.pbf`,
             ],
             minzoom: 0,
             maxzoom: 14,

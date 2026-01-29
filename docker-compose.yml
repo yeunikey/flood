@@ -1,4 +1,17 @@
 services:
+  db:
+    image: postgres:15-alpine
+    container_name: postgres-db
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=Astana2026!Bigdata
+      - POSTGRES_DB=flood
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
   frontend:
     container_name: frontend
     build:
@@ -16,6 +29,8 @@ services:
       - ".env.dev"
     environment:
       - NODE_ENV=development
+    depends_on:
+      - db
 
   gateway:
     image: nginx:alpine
@@ -29,6 +44,7 @@ services:
       - auth-service
       - data-service
       - tiles-service
+      - db
 
   auth-service:
     container_name: auth-service
@@ -46,6 +62,8 @@ services:
       - ".env.dev"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    depends_on:
+      - db
 
   data-service:
     container_name: data-service
@@ -64,6 +82,8 @@ services:
       - ".env.dev"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    depends_on:
+      - db
 
   tiles-service:
     container_name: tiles-service
@@ -88,3 +108,8 @@ services:
       - GRPC_URL=0.0.0.0:5000
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    depends_on:
+      - db
+
+volumes:
+  db_data:

@@ -30,7 +30,7 @@ import {
   MapSourceDataEvent,
 } from "mapbox-gl";
 import { FeatureCollection } from "geojson";
-import { api, vapi } from "@/shared/model/api/instance";
+import { api, baseUrl, vapi } from "@/shared/model/api/instance";
 import { useAuth } from "@/shared/model/auth";
 import { toast } from "react-toastify";
 import Loading from "@/shared/ui/el/Loading";
@@ -238,9 +238,7 @@ export default function UpdateSpatialModal({
     } else if (previewType === "existing" && previewId) {
       sourceData = {
         type: "vector",
-        tiles: [
-          `http://localhost:3001/v1/tiles/server/${previewId}/{z}/{x}/{y}.pbf`,
-        ],
+        tiles: [`${baseUrl}/tiles/server/${previewId}/{z}/{x}/{y}.pbf`],
         minzoom: 0,
         maxzoom: 14,
       };
@@ -445,9 +443,13 @@ export default function UpdateSpatialModal({
         poolId: spatialData.spatial.pool?.id,
       };
 
-      const res = await api.post(`data/spatial/${spatialData.spatial.id}`, payload, {
-        headers: { Authorization: "Bearer " + token },
-      });
+      const res = await api.post(
+        `data/spatial/${spatialData.spatial.id}`,
+        payload,
+        {
+          headers: { Authorization: "Bearer " + token },
+        },
+      );
 
       const updatedItem = res.data.data;
 

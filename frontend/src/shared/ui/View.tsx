@@ -30,6 +30,7 @@ import { useTheme } from "@mui/material/styles";
 import { ways } from "@/configs/paths";
 import { useSettings } from "@/features/settings/model/useSettings";
 import SettingsWidget from "@/widgets/settings/SettingsWidget";
+import { baseUrl } from "../model/api/instance";
 
 interface ViewProps {
   children?: React.ReactNode;
@@ -127,7 +128,7 @@ function View({ children, links, className }: ViewProps) {
                 }}
                 src={
                   user?.image
-                    ? "http://localhost:3001/v1/images/" + user.image
+                    ? `${baseUrl}/images/` + user.image
                     : undefined
                 }
               >

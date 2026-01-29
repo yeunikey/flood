@@ -3,13 +3,14 @@ import PublicIcon from "@mui/icons-material/Public";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { toast } from "react-toastify";
 import { useSpatialTiles } from "./model/useSpatialTiles";
+import { baseUrl } from "@/shared/model/api/instance";
 
 function SpatialURL() {
   const { activeTileId } = useSpatialTiles();
 
   if (!activeTileId) return null;
 
-  const url = `http://localhost:3001/v1/tiles/server/${activeTileId}/{z}/{x}/{y}.pbf`;
+  const url = `${baseUrl}/tiles/server/${activeTileId}/{z}/{x}/{y}.pbf`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(url);

@@ -528,7 +528,7 @@ export class DataService {
     }
 
     const [groups, total] = await query
-      .orderBy('group.date_utc', 'ASC')
+      .orderBy('group.date_utc', 'DESC')
       .skip(offset)
       .take(limit)
       .getManyAndCount();
