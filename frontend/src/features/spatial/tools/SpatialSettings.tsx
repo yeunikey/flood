@@ -1,35 +1,57 @@
 import {
-    Typography,
-    Switch,
-    IconButton,
-    Tooltip,
-    Divider,
+  Typography,
+  Switch,
+  IconButton,
+  Tooltip,
+  Divider,
 } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/Download";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { useSpatialSettings } from "../model/useSpatialSettings";
 import { useSpatialTiles } from "../model/useSpatialTiles";
+import { vapi } from "@/shared/model/api/instance";
+import { useAuth } from "@/shared/model/auth";
 
 export const SpatialSettings = () => {
   const { tooltipEnabled, toggleTooltip } = useSpatialSettings();
-  const { activeSpatial } = useSpatialTiles();
+  const { activeSpatial, activeTileId } = useSpatialTiles();
+  const { token } = useAuth();
 
-  const handleDownload = () => {
-    if (!activeSpatial) return;
+  const handleDownload = async () => {
+    if (!activeTileId) return;
 
-    const dataStr =
-      "data:text/json;charset=utf-8," +
-      encodeURIComponent(JSON.stringify(activeSpatial, null, 2));
-    const downloadAnchorNode = document.createElement("a");
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute(
-      "download",
-      `${activeSpatial.name || "spatial_data"}.json`,
-    );
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
+    try {
+      const response = await vapi.get(`tiles/${activeTileId}/geojson`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: "blob",
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+
+      const headers = response.headers as unknown as Record<
+        string,
+        string | undefined
+      >;
+      const contentDisposition = headers["content-disposition"];
+
+      let fileName = `${activeTileId}.geojson`;
+      if (contentDisposition) {
+        const fileNameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (fileNameMatch && fileNameMatch.length === 2)
+          fileName = decodeURIComponent(fileNameMatch[1]);
+      }
+
+      link.setAttribute("download", fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Failed to download GeoJSON", error);
+    }
   };
 
   if (!activeSpatial) return null;

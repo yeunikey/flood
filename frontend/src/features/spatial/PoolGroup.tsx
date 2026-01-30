@@ -46,7 +46,7 @@ const PoolGroup = ({ pool, isExpanded, onToggleExpand }: PoolGroupProps) => {
                     {tile.name}
                   </Typography>
                 }
-                secondary={tile.name}
+                secondary={"geojson"}
               />
             </ListItemButton>
           </CardActionArea>

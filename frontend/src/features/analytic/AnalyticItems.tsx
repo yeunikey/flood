@@ -22,14 +22,8 @@ import { fetchSite } from "./model/fetchCategory";
 function AnalyticItems() {
   const { pools } = usePools();
   const { layers } = useLayers();
-  const {
-    activeSites,
-    activePools,
-    selectAll,
-    clearSites,
-    toggleSite,
-    togglePool,
-  } = useAnalyticSites();
+  const { activeSites, activePools, clearSites, toggleSite, togglePool } =
+    useAnalyticSites();
 
   const [expanded, setExpanded] = useState<string[]>([]);
   const [activeTooltipId, setActiveTooltipId] = useState<string | null>(null);
@@ -89,7 +83,7 @@ function AnalyticItems() {
         </Button>
       </Box>
 
-      {pools.map((pool) => (
+      {pools.filter(p => p.sites.length > 0).map((pool) => (
         <PoolGroup
           key={pool.id}
           pool={pool}
@@ -107,40 +101,22 @@ function AnalyticItems() {
 
       {standaloneSites.length > 0 && (
         <div>
-          <ListItemButton
-            sx={{ pl: 3 }}
-            onClick={() => toggleExpand("standalone")}
-          >
-            <ListItemText
-              primary={
-                <Typography fontWeight={600}>Не входят в бассейн</Typography>
-              }
+          {standaloneSites.map((layer) => (
+            <CategoryGroup
+              key={layer.category.id}
+              category={layer.category}
+              sites={layer.sites}
+              expandedId={`standalone-cat-${layer.category.id}`}
+              isExpanded={expanded.includes(
+                `standalone-cat-${layer.category.id}`,
+              )}
+              onToggleExpand={toggleExpand}
+              activeSites={activeSites[layer.category.id]?.sites || []}
+              toggleSite={handleToggleSite}
+              activeTooltipId={activeTooltipId}
+              onTooltipToggle={handleTooltipToggle}
             />
-            {expanded.includes("standalone") ? <ExpandLess /> : <ExpandMore />}
-          </ListItemButton>
-
-          <Collapse
-            in={expanded.includes("standalone")}
-            timeout="auto"
-            unmountOnExit
-          >
-            {standaloneSites.map((layer) => (
-              <CategoryGroup
-                key={layer.category.id}
-                category={layer.category}
-                sites={layer.sites}
-                expandedId={`standalone-cat-${layer.category.id}`}
-                isExpanded={expanded.includes(
-                  `standalone-cat-${layer.category.id}`,
-                )}
-                onToggleExpand={toggleExpand}
-                activeSites={activeSites[layer.category.id]?.sites || []}
-                toggleSite={handleToggleSite}
-                activeTooltipId={activeTooltipId}
-                onTooltipToggle={handleTooltipToggle}
-              />
-            ))}
-          </Collapse>
+          ))}
         </div>
       )}
     </List>

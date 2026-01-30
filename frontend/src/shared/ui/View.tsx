@@ -127,9 +127,7 @@ function View({ children, links, className }: ViewProps) {
                   setAnchorEl(e.currentTarget);
                 }}
                 src={
-                  user?.image
-                    ? `${baseUrl}/images/` + user.image
-                    : undefined
+                  user?.image ? `${baseUrl}/images/` + user.image : undefined
                 }
               >
                 A
@@ -180,6 +178,17 @@ function View({ children, links, className }: ViewProps) {
               }
               groups.push(null);
             } else {
+              if (item.path === "/admin" && user?.role !== "admin") {
+                return;
+              }
+
+              if (
+                item.path === "/import" &&
+                !["admin", "editor"].includes(user?.role || "")
+              ) {
+                return;
+              }
+
               currentGroup.push(item);
             }
           });

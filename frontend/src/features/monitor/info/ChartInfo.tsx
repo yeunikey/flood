@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useAuth } from "@/shared/model/auth";
 import { useMonitorStore } from "../model/useMontorStore";
 import { api } from "@/shared/model/api/instance";
@@ -22,25 +22,8 @@ import { LineChart } from "@mui/x-charts/LineChart";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
-
-interface Variable {
-  id: number;
-  name: string;
-}
-
-interface DataValue {
-  id: number;
-  value: string;
-  variable: Variable;
-}
-
-interface GroupedData {
-  group: {
-    id: number;
-    date_utc: string;
-  };
-  values: DataValue[];
-}
+import Variable from "@/entities/variable/types/variable";
+import { GroupedData } from "@/shared/model/types/response";
 
 interface ChartValue {
   date: string;
@@ -57,9 +40,12 @@ interface Stats {
   p75: number;
 }
 
-const calculateStats = (values: number[]): Stats | null => {
-  if (values.length === 0) return null;
-  values.sort((a, b) => a - b);
+const calculateStats = (inputValues: number[]): Stats | null => {
+  if (inputValues.length === 0) return null;
+  // ВАЖНО: Создаем копию через [...inputValues], чтобы не сортировать исходный массив,
+  // который используется в графике
+  const values = [...inputValues].sort((a, b) => a - b);
+  
   const sum = values.reduce((a, b) => a + b, 0);
   const mean = sum / values.length;
   const squareDiffs = values.map((v) => (v - mean) ** 2);
@@ -102,6 +88,53 @@ function ChartInfo() {
   const [globalMin, setGlobalMin] = useState<Date | null>(new Date());
   const [globalMax, setGlobalMax] = useState<Date | null>(new Date());
 
+  const prevSiteCodeRef = useRef<string | null>(null);
+
+  const safeDate = (d: Date | string | null | undefined): Date | undefined => {
+    if (!d) return undefined;
+    const date = new Date(d);
+    return isNaN(date.getTime()) ? undefined : date;
+  };
+
+  const getMinFromDate = () => {
+    let min = safeDate(globalMin);
+    const currentTo = safeDate(toDate);
+
+    if (currentTo) {
+      const limitDate = new Date(currentTo);
+      limitDate.setFullYear(limitDate.getFullYear() - 10);
+      if (!min || limitDate > min) {
+        min = limitDate;
+      }
+    }
+    return min;
+  };
+
+  const getMaxToDate = () => {
+    let max = safeDate(globalMax);
+    const currentFrom = safeDate(fromDate);
+
+    if (currentFrom) {
+      const limitDate = new Date(currentFrom);
+      limitDate.setFullYear(limitDate.getFullYear() + 10);
+      if (!max || limitDate < max) {
+        max = limitDate;
+      }
+    }
+    return max;
+  };
+
+  useEffect(() => {
+    if (selectedSite?.code && prevSiteCodeRef.current !== selectedSite.code) {
+      setFromDate(null);
+      setToDate(null);
+      setChartData({});
+      setGlobalMin(new Date());
+      setGlobalMax(new Date());
+      prevSiteCodeRef.current = selectedSite.code;
+    }
+  }, [selectedSite?.code]);
+
   useEffect(() => {
     if (!selectedCategory || !token) return;
     api
@@ -117,7 +150,17 @@ function ChartInfo() {
   useEffect(() => {
     if (!selectedSite || !selectedCategory || !token) return;
 
+    if (selectedSite.code !== prevSiteCodeRef.current && (fromDate || toDate)) {
+      return;
+    }
+
     const fetchCharts = async () => {
+      if (fromDate && toDate) {
+        if (fromDate > toDate) return;
+        const tenYearsMs = 10 * 365.25 * 24 * 60 * 60 * 1000;
+        if (toDate.getTime() - fromDate.getTime() > tenYearsMs) return;
+      }
+
       setLoading(true);
       try {
         const params: Record<string, string> = {};
@@ -152,6 +195,7 @@ function ChartInfo() {
           if (!fromDate && !toDate) {
             const start = new Date(maxD);
             start.setDate(maxD.getDate() - 30);
+
             setFromDate(start);
             setToDate(maxD);
           }
@@ -184,10 +228,13 @@ function ChartInfo() {
             });
 
             setChartData(newData);
+          } else {
+            setChartData({});
           }
         }
       } catch (e) {
         console.error(e);
+        setChartData({});
       } finally {
         setLoading(false);
       }
@@ -219,8 +266,12 @@ function ChartInfo() {
               <DatePicker
                 label="С"
                 value={fromDate}
-                minDate={globalMin || undefined}
-                maxDate={!toDate ? globalMax || undefined : toDate}
+                minDate={getMinFromDate()}
+                maxDate={
+                  !toDate
+                    ? safeDate(globalMax) || undefined
+                    : safeDate(toDate) || undefined
+                }
                 onChange={(newValue) => setFromDate(newValue)}
                 slotProps={{ textField: { size: "small", sx: { width: 150 } } }}
               />
@@ -228,8 +279,12 @@ function ChartInfo() {
               <DatePicker
                 label="По"
                 value={toDate}
-                minDate={!fromDate ? globalMin || undefined : fromDate}
-                maxDate={globalMax || undefined}
+                minDate={
+                  !fromDate
+                    ? safeDate(globalMin) || undefined
+                    : safeDate(fromDate) || undefined
+                }
+                maxDate={getMaxToDate()}
                 onChange={(newValue) => setToDate(newValue)}
                 slotProps={{ textField: { size: "small", sx: { width: 150 } } }}
               />
@@ -248,11 +303,13 @@ function ChartInfo() {
             const data = chartData[variable.id] || [];
             const dates = data.map((d) => new Date(d.date));
             const values = data.map((d) => d.value);
+            // values передается в calculateStats, которая раньше сортировала их "на месте",
+            // ломая порядок для графика. Теперь calculateStats делает копию.
             const stats = calculateStats(values);
 
             return (
               <Paper
-                key={variable.id}
+                key={`${variable.id}-${selectedSite?.id}`}
                 elevation={0}
                 className="rounded-lg border border-gray-200 p-4 flex flex-col gap-4 relative"
               >
@@ -290,7 +347,7 @@ function ChartInfo() {
                       ]}
                       series={[
                         {
-                          data: values,
+                          data: values, // Теперь values остаются отсортированными по времени (как и dates)
                           label: variable.name,
                           showMark: false,
                           connectNulls: true,
@@ -299,6 +356,7 @@ function ChartInfo() {
                       ]}
                       height={300}
                       margin={{ left: 50, right: 30, top: 30, bottom: 30 }}
+                      key={`${variable.id}-${data.length}`}
                     />
                   ) : (
                     <div className="h-full flex items-center justify-center text-gray-400">

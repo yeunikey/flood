@@ -24,7 +24,6 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import CreateSpatialModal from "./modal/CreateSpatialModal";
 import UpdateSpatialModal from "./modal/UpdateSpatialModal";
 
-// Define the composite type used in the array
 interface SpatialComposite {
   spatial: Spatial;
   tiles: { id: string; name: string }[];
@@ -32,7 +31,7 @@ interface SpatialComposite {
 
 export default function SpatialWidget() {
   const { token } = useAuth();
-  const { spatials } = useSpatial(); // Assumed to be SpatialComposite[]
+  const { spatials } = useSpatial();
   const [createOpen, setCreateOpen] = useState(false);
 
   const [editSpatialData, setEditSpatialData] =
@@ -47,7 +46,7 @@ export default function SpatialWidget() {
     if (!confirm("Вы уверены, что хотите удалить эти пространственные данные?"))
       return;
     try {
-      await api.delete(`spatial/${id}`, {
+      await api.delete(`data/spatial/${id}`, {
         headers: { Authorization: "Bearer " + token },
       });
       toast.success("Spatial deleted");
@@ -78,7 +77,7 @@ export default function SpatialWidget() {
 
       <TableContainer
         component={Paper}
-        className="flex-1 overflow-auto shadow-sm rounded-lg"
+        className="flex-1 overflow-auto shadow-sm rounded-lg! border border-gray-200"
       >
         <Table stickyHeader>
           <TableHead>

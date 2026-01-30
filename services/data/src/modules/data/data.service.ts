@@ -2,7 +2,7 @@
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, DeepPartial, In, Repository } from 'typeorm';
 import { Category } from './entities/category.entity';
@@ -323,7 +323,6 @@ export class DataService {
     start?: Date,
     end?: Date,
   ) {
-    // Получаем глобальные min/max по всем данным
     const allDates = await this.groupRepo
       .createQueryBuilder('group')
       .leftJoin('group.category', 'category')
@@ -349,7 +348,6 @@ export class DataService {
       };
     }
 
-    // Если даты не заданы → берём последний месяц относительно maxDate
     if (!start || !end) {
       end = allDates.maxDate;
       const tmp = new Date(end);
@@ -357,7 +355,11 @@ export class DataService {
       start = start ?? tmp;
     }
 
-    // Получаем группы в диапазоне
+    const elevenYearsInMs = 11 * 365.25 * 24 * 60 * 60 * 1000;
+    if (Math.abs(end.getTime() - start.getTime()) > elevenYearsInMs) {
+      throw new BadRequestException('Date range cannot exceed 11 years');
+    }
+
     const groups = await this.groupRepo
       .createQueryBuilder('group')
       .leftJoinAndSelect('group.site', 'site')
@@ -436,7 +438,7 @@ export class DataService {
       .leftJoinAndSelect('group.qcl', 'qcl')
       .where('category.id = :categoryId', { categoryId })
       .andWhere('site.code = :siteCode', { siteCode })
-      .orderBy('group.date_utc', 'ASC')
+      .orderBy('group.date_utc', 'DESC')
       .skip(offset)
       .take(limit)
       .getManyAndCount();

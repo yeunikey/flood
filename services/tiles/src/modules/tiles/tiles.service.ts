@@ -1,9 +1,15 @@
-import { Injectable, OnModuleInit, Logger, HttpStatus } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleInit,
+  Logger,
+  HttpStatus,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Tile } from './entities/tile.entity';
 import { join } from 'path';
-import { existsSync, mkdirSync, unlinkSync } from 'fs';
+import { createReadStream, existsSync, mkdirSync, unlinkSync } from 'fs';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { TileserverService } from '../tileserver/tileserver.service';
@@ -105,5 +111,16 @@ export class TilesService implements OnModuleInit {
         id: In(ids),
       },
     });
+  }
+
+  async getGeoJsonStream(id: string) {
+    const tile = await this.tilesRepository.findOne({ where: { id } });
+    if (!tile || !tile.geoJsonPath || !existsSync(tile.geoJsonPath)) {
+      throw new NotFoundException('GeoJSON file not found');
+    }
+    return {
+      stream: createReadStream(tile.geoJsonPath),
+      filename: `${tile.name || tile.id}.json`,
+    };
   }
 }

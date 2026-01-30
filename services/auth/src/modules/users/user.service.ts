@@ -1,8 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { User } from './entities/user.entity';
+import * as bcrypt from 'bcrypt';
+import { User, UserRole } from './entities/user.entity';
 import { UserUpdateDto } from './dto/user-update.dto';
+import { CreateUserDto } from './dto/create-user.dto';
 
 @Injectable()
 export class UserService {
@@ -12,10 +14,10 @@ export class UserService {
   ) {}
 
   toSafeUser(user: User | null) {
-    return {
-      ...user,
-      password: undefined,
-    };
+    if (!user) return null;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password, ...rest } = user;
+    return rest;
   }
 
   async findByIdSafe(id: number) {
@@ -26,63 +28,45 @@ export class UserService {
     return this.userRepository.findOneBy({ login });
   }
 
-  async getPublicUserById(id: number) {
-    const user = await this.findByIdSafe(id);
-
-    if (!user) {
-      return {
-        statusCode: 400,
-        message: 'Пользователь не найден',
-      };
-    }
-
-    return {
-      statusCode: 200,
-      data: this.toSafeUser(user),
-    };
+  async getAllUsers() {
+    const users = await this.userRepository.find({ order: { id: 'ASC' } });
+    return users.map((u) => this.toSafeUser(u));
   }
 
-  async updateProfile(id: number, dto: UserUpdateDto) {
-    const user = await this.findByIdSafe(id);
-
-    if (!user) {
-      return {
-        statusCode: 400,
-        message: 'Пользователь не найден',
-      };
+  async createUser(dto: CreateUserDto) {
+    if (dto.role === 'admin') {
+      throw new BadRequestException('Нельзя создать админа вручную');
     }
 
-    if (dto.image !== undefined) {
-      user.image = dto.image;
+    const exists = await this.userRepository.findOneBy({ login: dto.login });
+    if (exists) {
+      throw new BadRequestException('Логин занят');
     }
 
-    const saved = await this.userRepository.save(user);
+    const hashedPassword = await bcrypt.hash(dto.password, 10);
+    const user = this.userRepository.create({
+      ...dto,
+      password: hashedPassword,
+    });
 
-    return {
-      statusCode: 200,
-      message: 'Профиль обновлён',
-      data: this.toSafeUser(saved),
-    };
+    return this.toSafeUser(await this.userRepository.save(user));
+  }
+
+  async updateRole(id: number, role: UserRole) {
+    if (role === 'admin') {
+      throw new BadRequestException('Нельзя назначить роль админа');
+    }
+    await this.userRepository.update(id, { role });
+    return this.toSafeUser(await this.findByIdSafe(id));
   }
 
   async deleteById(id: number) {
-    const user = await this.findByIdSafe(id);
-
-    if (!user) {
-      return {
-        statusCode: 400,
-        message: 'Пользователь не найден',
-      };
-    }
-
-    await this.userRepository.remove(user);
-
-    return {
-      statusCode: 200,
-    };
+    await this.userRepository.delete(id);
+    return { statusCode: 200 };
   }
 
-  async saveUser(user: Partial<User>) {
-    return await this.userRepository.save(user);
+  async updateProfile(id: number, dto: UserUpdateDto) {
+    await this.userRepository.update(id, dto);
+    return this.toSafeUser(await this.findByIdSafe(id));
   }
 }

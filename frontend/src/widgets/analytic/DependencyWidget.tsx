@@ -105,11 +105,21 @@ const DependencyWidget: React.FC = () => {
   const [cutoff, setCutoff] = useState<number>(0);
 
   const prevDatesRef = useRef({ from: fromDate, to: toDate });
-  const records = Object.values(activeSites);
-  const sitesFingerprint = records
-    .flatMap((r) => r.sites.map((s) => s.id))
-    .sort()
-    .join(",");
+
+  const records = useMemo(() => Object.values(activeSites), [activeSites]);
+
+  const sitesFingerprint = useMemo(
+    () =>
+      records
+        .flatMap((r) => r.sites.map((s) => s.id))
+        .sort()
+        .join(","),
+    [records],
+  );
+
+  const chartDataDeps = useMemo(() => {
+    return records.flatMap((r) => r.sites.map((s) => s.chartResult));
+  }, [records]);
 
   useEffect(() => {
     if (!token) return;
@@ -154,7 +164,7 @@ const DependencyWidget: React.FC = () => {
       });
     });
     return list;
-  }, [records]);
+  }, [records, chartDataDeps]);
 
   const matrix = useMemo(() => {
     const activeSeriesData: SeriesData[] = [];
@@ -164,6 +174,8 @@ const DependencyWidget: React.FC = () => {
       if (isVariableDisabled(item.catId, item.siteId, item.varId)) return;
 
       const record = activeSites[item.catId];
+      if (!record) return;
+
       const site = record.sites.find((s) => s.id === item.siteId);
       if (!site || !site.chartResult) return;
 
@@ -201,6 +213,11 @@ const DependencyWidget: React.FC = () => {
         const s1 = activeSeriesData[i];
         const s2 = activeSeriesData[j];
 
+        if (i === j) {
+          resultMatrix.push({ x: s1.label, y: s2.label, r: 1 });
+          continue;
+        }
+
         const commonTimes = timestamps.filter(
           (t) => s1.rawMap.has(t) && s2.rawMap.has(t),
         );
@@ -232,7 +249,13 @@ const DependencyWidget: React.FC = () => {
       labels: activeSeriesData.map((s) => s.label),
       data: resultMatrix,
     };
-  }, [activeSites, isVariableDisabled, allPotentialSeries, method]);
+  }, [
+    activeSites,
+    isVariableDisabled,
+    allPotentialSeries,
+    method,
+    chartDataDeps,
+  ]);
 
   const handleCutoffChange = (event: Event, newValue: number | number[]) => {
     setCutoff(newValue as number);

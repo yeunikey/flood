@@ -6,20 +6,47 @@ import {
   Tabs,
   Tooltip,
 } from "@mui/material";
-import { useMonitorStore } from "./model/useMontorStore";
 import CloseIcon from "@mui/icons-material/Close";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import TableRowsIcon from "@mui/icons-material/TableRows";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import TableInfo from "./info/TableInfo";
 import ChartInfo from "./info/ChartInfo";
+import { useMonitorStore } from "./model/useMontorStore";
 
 function SiteInfo() {
   const { selectedSite, setSelectedSite } = useMonitorStore();
   const [value, setValue] = useState(0);
+  const [height, setHeight] = useState(384);
+
+  const isDragging = useRef(false);
+  const startY = useRef(0);
+  const startHeight = useRef(0);
 
   const handleChange = (_event: React.SyntheticEvent, newValue: number) => {
     setValue(newValue);
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    isDragging.current = true;
+    startY.current = e.clientY;
+    startHeight.current = height;
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isDragging.current) return;
+    const delta = startY.current - e.clientY;
+    const newHeight = Math.max(200, Math.min(startHeight.current + delta, window.innerHeight - 100));
+    setHeight(newHeight);
+  };
+
+  const handleMouseUp = () => {
+    isDragging.current = false;
+    document.removeEventListener("mousemove", handleMouseMove);
+    document.removeEventListener("mouseup", handleMouseUp);
   };
 
   return (
@@ -29,7 +56,15 @@ function SiteInfo() {
       timeout={300}
       unmountOnExit
     >
-      <div className="relative h-96 bg-white flex flex-col z-10">
+      <div 
+        className="relative bg-white flex flex-col z-10 transition-none" 
+        style={{ height: `${height}px` }}
+      >
+        <div
+          className="absolute top-0 left-0 right-0 h-1.5 cursor-row-resize hover:bg-gray-300 z-[101] transition-colors"
+          onMouseDown={handleMouseDown}
+        />
+
         <Divider orientation="horizontal" />
 
         <div className="absolute z-[100] top-3 right-3">

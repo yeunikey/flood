@@ -3,55 +3,81 @@ import { useMonitorSites } from "../model/useMonitorSites";
 import { useMonitorMap } from "../model/useMonitorMap";
 
 function PoolMarkers() {
-    const { activePools } = useMonitorSites();
-    const { map } = useMonitorMap();
+  const { activePools } = useMonitorSites();
+  const { map } = useMonitorMap();
 
-    const layerRefs = useRef<string[]>([]);
+  const layerRefs = useRef<string[]>([]);
 
-    useEffect(() => {
-        if (!map) return;
+  useEffect(() => {
+    if (!map) return;
 
-        layerRefs.current.forEach(layerId => {
+    const updateLayers = () => {
+      layerRefs.current.forEach((layerId) => {
+        try {
+          if (map.getStyle()) {
             if (map.getLayer(layerId)) map.removeLayer(layerId);
             if (map.getSource(layerId)) map.removeSource(layerId);
-        });
-        layerRefs.current = [];
+          }
+        } catch (e) {
+          console.warn("Cleanup error:", e);
+        }
+      });
+      layerRefs.current = [];
 
-        activePools.forEach(pool => {
-            if (!pool.geojson) return;
+      activePools.forEach((pool) => {
+        if (!pool.geojson) return;
 
-            const layerId = `pool-${pool.id}`;
+        const layerId = `pool-${pool.id}`;
 
-            map.addSource(layerId, {
-                type: "geojson",
-                data: pool.geojson
-            });
+        if (map.getSource(layerId)) return;
 
-            map.addLayer({
-                id: layerId,
-                type: "fill",
-                source: layerId,
-                layout: {},
-                paint: {
-                    "fill-color": "#007bff",
-                    "fill-opacity": 0.4,
-                    "fill-outline-color": "#0056b3"
-                }
-            });
+        try {
+          map.addSource(layerId, {
+            type: "geojson",
+            data: pool.geojson,
+          });
 
-            layerRefs.current.push(layerId);
-        });
+          map.addLayer({
+            id: layerId,
+            type: "fill",
+            source: layerId,
+            layout: {},
+            paint: {
+              "fill-color": "#007bff",
+              "fill-opacity": 0.4,
+              "fill-outline-color": "#0056b3",
+            },
+          });
 
-        return () => {
-            layerRefs.current.forEach(layerId => {
-                if (map.getLayer(layerId)) map.removeLayer(layerId);
-                if (map.getSource(layerId)) map.removeSource(layerId);
-            });
-            layerRefs.current = [];
-        };
-    }, [map, activePools]);
+          layerRefs.current.push(layerId);
+        } catch (e) {
+          console.error("Error adding pool layer:", e);
+        }
+      });
+    };
 
-    return null;
+    if (map.isStyleLoaded()) {
+      updateLayers();
+    } else {
+      map.once("style.load", updateLayers);
+    }
+
+    return () => {
+      map.off("style.load", updateLayers);
+
+      layerRefs.current.forEach((layerId) => {
+        try {
+          if (map && map.getStyle()) {
+            if (map.getLayer(layerId)) map.removeLayer(layerId);
+            if (map.getSource(layerId)) map.removeSource(layerId);
+          }
+        } catch {}
+      });
+      layerRefs.current = [];
+    };
+  }, [map, activePools]);
+
+  return null;
 }
 
 export default PoolMarkers;

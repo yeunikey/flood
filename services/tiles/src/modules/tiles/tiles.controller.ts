@@ -8,6 +8,9 @@ import {
   UsePipes,
   Delete,
   Param,
+  Get,
+  Header,
+  StreamableFile,
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -37,6 +40,15 @@ export class TilesController {
         name: tile.name,
       })),
     };
+  }
+
+  @Get(':id/geojson')
+  @Header('Content-Type', 'application/geo+json')
+  async downloadGeoJson(@Param('id') id: string) {
+    const { stream, filename } = await this.tilesService.getGeoJsonStream(id);
+    return new StreamableFile(stream, {
+      disposition: `attachment; filename="${encodeURIComponent(filename)}"`,
+    });
   }
 
   @Post('upload')

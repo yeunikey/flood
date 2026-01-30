@@ -14,8 +14,6 @@ import useAnalyticStore from "@/features/analytic/model/useAnalyticStore";
 import { useAuth } from "@/shared/model/auth";
 import { fetchAnalyticData } from "@/features/analytic/model/fetchCategory";
 import { useAnalyticSites } from "@/features/analytic/model/useAnalyticSites";
-import { useState } from "react";
-import VariablesSettingsModal from "@/features/analytic/modal/VariablesSettingsModal";
 
 function ToolsWidget() {
   const { token } = useAuth();
@@ -42,6 +40,16 @@ function ToolsWidget() {
   ) => {
     if (!token) return;
 
+    // Блокируем запрос, если диапазон некорректен
+    if (newFromDate && newToDate) {
+      if (newFromDate > newToDate) return;
+
+      const tenYearsMs = 10 * 365.25 * 24 * 60 * 60 * 1000;
+      if (newToDate.getTime() - newFromDate.getTime() > tenYearsMs) {
+        return;
+      }
+    }
+
     Object.values(activeSites).forEach((record) => {
       record.sites.forEach((site) => {
         fetchAnalyticData(token, site, 0, 10, newFromDate, newToDate);
@@ -49,6 +57,47 @@ function ToolsWidget() {
         setSitePage(record.category.id, site.id, 0);
       });
     });
+  };
+
+  // Хелпер для безопасного преобразования в Date
+  const safeDate = (d: Date | string | null | undefined): Date | undefined => {
+    if (!d) return undefined;
+    const date = new Date(d);
+    return isNaN(date.getTime()) ? undefined : date;
+  };
+
+  const getMinFromDate = () => {
+    let min = safeDate(globalMinDate);
+    const currentTo = safeDate(toDate);
+
+    if (currentTo) {
+      const limitDate = new Date(currentTo);
+      limitDate.setFullYear(limitDate.getFullYear() - 10);
+
+      // Мы хотим самое ПОЗДНЕЕ из ограничений (чтобы сузить диапазон)
+      // Если limitDate (2014) > min (1960), то min = 2014
+      if (!min || limitDate > min) {
+        min = limitDate;
+      }
+    }
+    return min;
+  };
+
+  const getMaxToDate = () => {
+    let max = safeDate(globalMaxDate);
+    const currentFrom = safeDate(fromDate);
+
+    if (currentFrom) {
+      const limitDate = new Date(currentFrom);
+      limitDate.setFullYear(limitDate.getFullYear() + 10);
+
+      // Мы хотим самое РАННЕЕ из ограничений
+      // Если limitDate (2024) < max (2050), то max = 2024
+      if (!max || limitDate < max) {
+        max = limitDate;
+      }
+    }
+    return max;
   };
 
   return (
@@ -76,12 +125,16 @@ function ToolsWidget() {
               </Typography>
               <DatePicker
                 label="дд.мм.гггг"
-                value={fromDate}
-                minDate={globalMinDate || undefined}
-                maxDate={!toDate ? globalMaxDate || undefined : toDate}
+                value={safeDate(fromDate) || null}
+                minDate={getMinFromDate()}
+                maxDate={
+                  !toDate
+                    ? safeDate(globalMaxDate) || undefined
+                    : safeDate(toDate) || undefined
+                }
                 onChange={(newValue: Date | null) => {
                   setFromDate(newValue);
-                  handleDateChange(newValue, toDate);
+                  handleDateChange(newValue, safeDate(toDate) || null);
                 }}
                 slotProps={{ textField: { size: "small" } }}
               />
@@ -93,12 +146,16 @@ function ToolsWidget() {
               </Typography>
               <DatePicker
                 label="дд.мм.гггг"
-                value={toDate}
-                minDate={!fromDate ? globalMinDate || undefined : fromDate}
-                maxDate={globalMaxDate || undefined}
+                value={safeDate(toDate) || null}
+                minDate={
+                  !fromDate
+                    ? safeDate(globalMinDate) || undefined
+                    : safeDate(fromDate) || undefined
+                }
+                maxDate={getMaxToDate()}
                 onChange={(newValue: Date | null) => {
                   setToDate(newValue);
-                  handleDateChange(fromDate, newValue);
+                  handleDateChange(safeDate(fromDate) || null, newValue);
                 }}
                 slotProps={{ textField: { size: "small" } }}
               />

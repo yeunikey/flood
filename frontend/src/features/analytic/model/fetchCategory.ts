@@ -132,6 +132,11 @@ export const fetchChartData = async (
 ) => {
   const { setSiteChartLoading, setSiteChartResult } =
     useAnalyticSites.getState();
+  const {
+    setGlobalRange,
+    toDate: storeToDate,
+    setToDate,
+  } = useAnalyticStore.getState();
   const category = site.category;
 
   setSiteChartLoading(category.id, site.id, true);
@@ -163,6 +168,17 @@ export const fetchChartData = async (
 
     if (res.status === 200 && res.data.data) {
       setSiteChartResult(category.id, site.id, res.data.data.content);
+      setGlobalRange(res.data.data.minDate, res.data.data.maxDate);
+
+      console.log(
+        "Setting global range:",
+        res.data.data.minDate,
+        res.data.data.maxDate,
+      );
+      if (storeToDate === null && res.data.data.maxDate) {
+        console.log(new Date(res.data.data.maxDate));
+        setToDate(new Date(res.data.data.maxDate));
+      }
     }
   } catch (error) {
     console.error("Failed to fetch chart data:", error);
