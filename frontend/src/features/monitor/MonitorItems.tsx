@@ -3,6 +3,7 @@ import {
   Box,
   Button,
   Collapse,
+  Divider,
   List,
   ListItemButton,
   ListItemText,
@@ -218,8 +219,10 @@ function MonitorItems() {
           />
         ))}
 
+      <Divider orientation="horizontal"/>
+
       {standaloneSites.length > 0 && (
-        <div>
+        <div className="">
           {standaloneSites.map((layer) => (
             <CategoryGroup
               key={layer.category.id}
@@ -239,6 +242,7 @@ function MonitorItems() {
               poolName={undefined}
               activeTooltipId={activeTooltipId}
               onTooltipToggle={handleTooltipToggle}
+              standalone
             />
           ))}
         </div>

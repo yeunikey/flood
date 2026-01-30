@@ -22,11 +22,12 @@ interface SiteRowProps {
     activeTooltipId: string | null;
     onTooltipToggle: (id: string) => void;
     uniqueKey: string;
+    standalone?: boolean;
 }
 
-const SiteRow = ({ site, isActive, poolName, toggleSite, activeTooltipId, onTooltipToggle, uniqueKey }: SiteRowProps) => {
+const SiteRow = ({ site, isActive, poolName, toggleSite, activeTooltipId, onTooltipToggle, uniqueKey, standalone = false }: SiteRowProps) => {
     return (
-        <ListItem sx={{ pl: 8 }} secondaryAction={
+        <ListItem sx={{ pl: standalone ? 4 : 6 }} secondaryAction={
             <Box display="flex" alignItems="center">
                 <LightTooltip
                     open={activeTooltipId === uniqueKey}

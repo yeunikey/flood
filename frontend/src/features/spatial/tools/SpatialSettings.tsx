@@ -66,7 +66,7 @@ export const SpatialSettings = () => {
             <VisibilityOffIcon fontSize="small" className="text-gray-400" />
           )}
           <Typography variant="caption" className="font-medium text-gray-700">
-            Подсказки
+            Атрибуты
           </Typography>
         </div>
         <Switch
