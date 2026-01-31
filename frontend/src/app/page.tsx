@@ -41,6 +41,7 @@ export default function Monitor() {
             height: "100%",
             overflow: "hidden",
             minWidth: 0,
+            position: "relative",
           }}
         >
           <MonitorMap />

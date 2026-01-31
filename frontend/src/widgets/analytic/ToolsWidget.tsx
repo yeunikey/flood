@@ -1,10 +1,9 @@
 import { ShowChart } from "@mui/icons-material";
 import {
   Button,
-  Divider,
-  ToggleButton,
+  Divider, ToggleButton,
   ToggleButtonGroup,
-  Typography,
+  Typography
 } from "@mui/material";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
@@ -40,7 +39,6 @@ function ToolsWidget() {
   ) => {
     if (!token) return;
 
-    // Блокируем запрос, если диапазон некорректен
     if (newFromDate && newToDate) {
       if (newFromDate > newToDate) return;
 
@@ -59,7 +57,6 @@ function ToolsWidget() {
     });
   };
 
-  // Хелпер для безопасного преобразования в Date
   const safeDate = (d: Date | string | null | undefined): Date | undefined => {
     if (!d) return undefined;
     const date = new Date(d);
@@ -74,8 +71,6 @@ function ToolsWidget() {
       const limitDate = new Date(currentTo);
       limitDate.setFullYear(limitDate.getFullYear() - 10);
 
-      // Мы хотим самое ПОЗДНЕЕ из ограничений (чтобы сузить диапазон)
-      // Если limitDate (2014) > min (1960), то min = 2014
       if (!min || limitDate > min) {
         min = limitDate;
       }
@@ -91,8 +86,6 @@ function ToolsWidget() {
       const limitDate = new Date(currentFrom);
       limitDate.setFullYear(limitDate.getFullYear() + 10);
 
-      // Мы хотим самое РАННЕЕ из ограничений
-      // Если limitDate (2024) < max (2050), то max = 2024
       if (!max || limitDate < max) {
         max = limitDate;
       }

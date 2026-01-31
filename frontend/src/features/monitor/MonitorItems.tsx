@@ -2,14 +2,9 @@ import { useState } from "react";
 import {
   Box,
   Button,
-  Collapse,
   Divider,
   List,
-  ListItemButton,
-  ListItemText,
-  Typography,
 } from "@mui/material";
-import { ExpandLess, ExpandMore } from "@mui/icons-material";
 
 import { usePools } from "@/entities/pool/model/usePools";
 import { useLayers } from "@/entities/layer/model/useLayers";
@@ -35,6 +30,7 @@ function MonitorItems() {
   const centerToPool = (pool: Pool) => {
     if (!map) return;
     if (
+      pool.geojson &&
       pool.geojson.type === "FeatureCollection" &&
       pool.geojson.features.length > 0
     ) {
@@ -177,6 +173,13 @@ function MonitorItems() {
     }
   };
 
+  const validPools = pools
+    .filter((p) => p.sites.length > 0)
+    .sort((a, b) => (a.description || "").localeCompare(b.description || ""));
+
+  const basinPools = validPools.filter((p) => p.description === "Бассейн");
+  const otherPools = validPools.filter((p) => p.description !== "Бассейн");
+
   return (
     <List dense className="pb-32!">
       <Box className="flex gap-2 px-6 mb-6">
@@ -200,26 +203,46 @@ function MonitorItems() {
         </Button>
       </Box>
 
-      {pools
-        .filter((p) => p.sites.length > 0)
-        .map((pool) => (
-          <PoolGroup
-            key={pool.id}
-            pool={pool}
-            layers={layers}
-            isExpanded={activePools.some((p) => p.id === pool.id)}
-            onToggleExpand={toggleExpand}
-            expandedList={expanded}
-            onTogglePoolAll={(enabled) => handlePoolToggleAll(pool, enabled)}
-            onToggleCategoryAll={handleCategoryToggleAll}
-            activeSites={activeSites}
-            toggleSite={toggleSite}
-            activeTooltipId={activeTooltipId}
-            onTooltipToggle={handleTooltipToggle}
-          />
-        ))}
+      {basinPools.map((pool) => (
+        <PoolGroup
+          key={pool.id}
+          pool={pool}
+          layers={layers}
+          isExpanded={activePools.some((p) => p.id === pool.id)}
+          onToggleExpand={toggleExpand}
+          expandedList={expanded}
+          onTogglePoolAll={(enabled) => handlePoolToggleAll(pool, enabled)}
+          onToggleCategoryAll={handleCategoryToggleAll}
+          activeSites={activeSites}
+          toggleSite={toggleSite}
+          activeTooltipId={activeTooltipId}
+          onTooltipToggle={handleTooltipToggle}
+        />
+      ))}
 
-      <Divider orientation="horizontal"/>
+      {basinPools.length > 0 && otherPools.length > 0 && (
+        <Divider component="li" />
+      )}
+
+      {otherPools.map((pool) => (
+        <PoolGroup
+          key={pool.id}
+          pool={pool}
+          layers={layers}
+          isExpanded={activePools.some((p) => p.id === pool.id)}
+          onToggleExpand={toggleExpand}
+          expandedList={expanded}
+          onTogglePoolAll={(enabled) => handlePoolToggleAll(pool, enabled)}
+          onToggleCategoryAll={handleCategoryToggleAll}
+          activeSites={activeSites}
+          toggleSite={toggleSite}
+          activeTooltipId={activeTooltipId}
+          onTooltipToggle={handleTooltipToggle}
+        />
+      ))}
+
+      {(basinPools.length > 0 || otherPools.length > 0) &&
+        standaloneSites.length > 0 && <Divider component="li" />}
 
       {standaloneSites.length > 0 && (
         <div className="">

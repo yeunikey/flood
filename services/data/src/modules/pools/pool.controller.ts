@@ -19,6 +19,7 @@ export class PoolController {
   async create(@Body() body: PoolCreateDto) {
     const pool = await this.poolService.create(
       body.name,
+      body.description,
       body.geojson,
       body.siteIds,
       body.spatialIds,
@@ -44,6 +45,7 @@ export class PoolController {
     const updated = await this.poolService.update(
       pool,
       body.name,
+      body.description,
       body.geojson,
       body.siteIds,
       body.spatialIds,

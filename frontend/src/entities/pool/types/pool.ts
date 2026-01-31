@@ -5,6 +5,7 @@ import { FeatureCollection } from "geojson";
 interface Pool {
   id: number;
   name: string;
+  description: string;
   geojson: FeatureCollection;
   sites: Site[];
   spatials: Spatial[];

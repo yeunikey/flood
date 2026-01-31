@@ -48,9 +48,10 @@ function UpdatePoolModal() {
 
   const [map, setMap] = useState<Map | null>(null);
   const [name, setName] = useState("");
+  const [description, setDescription] = useState("Бассейн");
   const [geojson, setGeojson] = useState<FeatureCollection | null>(null);
   const [selectedSites, setSelectedSites] = useState<number[]>([]);
-  const [selectedSpatials, setSelectedSpatials] = useState<number[]>([]); // ID теперь number
+  const [selectedSpatials, setSelectedSpatials] = useState<number[]>([]);
 
   const handleGeoJsonUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -85,6 +86,7 @@ function UpdatePoolModal() {
 
     setName(editingPool.name || "");
     setGeojson(editingPool.geojson || null);
+    setDescription(editingPool.description || "Бассейн");
     setSelectedSites(editingPool.sites?.map((s) => s.id) || []);
     setSelectedSpatials(editingPool.spatials?.map((s) => s.id) ?? []);
   }, [updatePoolModal, editingPool]);
@@ -112,10 +114,11 @@ function UpdatePoolModal() {
       setSelectedSpatials([]);
       setName("");
       setGeojson(null);
+      setDescription("Бассейн");
 
       toast.success("Бассейн удалён");
       setUpdatePoolModal(false);
-    } catch (e) {
+    } catch {
       toast.error("Ошибка удаления бассейна");
     } finally {
       setLoading(false);
@@ -132,9 +135,10 @@ function UpdatePoolModal() {
         `data/pools/update?pool_id=${editingPool.id}`,
         {
           name,
+          description,
           geojson,
           siteIds: selectedSites,
-          spatialIds: selectedSpatials, // Отправляем spatialIds
+          spatialIds: selectedSpatials,
         },
         {
           headers: {
@@ -150,7 +154,8 @@ function UpdatePoolModal() {
       setSelectedSpatials([]);
       setName("");
       setGeojson(null);
-    } catch (e) {
+      setDescription("Бассейн");
+    } catch {
       toast.error("Ошибка обновления бассейна");
     } finally {
       setLoading(false);
@@ -284,12 +289,21 @@ function UpdatePoolModal() {
 
         <div className="grid grid-cols-2 gap-6 h-124">
           <div className="flex flex-col gap-3">
-            <Typography fontWeight={500}>Название бассейна</Typography>
+            <Typography fontWeight={500}>Название</Typography>
             <TextField
               label="Название"
               size="small"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              fullWidth
+            />
+
+            <Typography fontWeight={500}>Описание</Typography>
+            <TextField
+              label="Описание"
+              size="small"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
               fullWidth
             />
 
@@ -388,11 +402,7 @@ function UpdatePoolModal() {
           <Button variant="outlined" onClick={() => setUpdatePoolModal(false)}>
             Отмена
           </Button>
-          <Button
-            variant="contained"
-            onClick={handleSubmit}
-            disabled={!name || !geojson}
-          >
+          <Button variant="contained" onClick={handleSubmit} disabled={!name}>
             Сохранить
           </Button>
         </div>

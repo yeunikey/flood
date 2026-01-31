@@ -1,15 +1,9 @@
 import type { Metadata } from "next";
-import { Roboto } from "next/font/google";
 import "./globals.css";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Authorize from "@/shared/ui/Authorize";
 import { ToastContainer } from "react-toastify";
-
-const roboto = Roboto({
-  variable: "--font-roboto",
-  subsets: ["latin", "cyrillic"],
-  weight: ["400", "500", "600", "700", "800", "900"],
-});
+import { roboto } from "@/shared/fonts/roboto";
 
 export const metadata: Metadata = {
   title: "Панель управления Flood Analytics",

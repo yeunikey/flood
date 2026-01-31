@@ -11,9 +11,12 @@ export class Pool {
   @Column()
   name: string;
 
+  @Column({ default: 'Бассейн' })
+  description: string;
+
   @Column({
     type: 'jsonb',
-    nullable: false,
+    nullable: true,
   })
   geojson: FeatureCollection;
 

@@ -4,12 +4,16 @@ import {
   IsNumber,
   IsOptional,
 } from '@nestjs/class-validator';
-import { FeatureCollection } from 'geojson';
+import type { FeatureCollection } from 'geojson';
 
 export class PoolCreateDto {
   @IsString()
   name: string;
 
+  @IsString()
+  description: string;
+
+  @IsOptional()
   geojson: FeatureCollection;
 
   @IsArray()

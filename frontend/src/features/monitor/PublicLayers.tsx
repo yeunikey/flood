@@ -16,7 +16,7 @@ function PublicLayers() {
                 />
 
                 <LayerItem
-                    label="Границы областей"
+                    label="Границы регионов"
                     checked={layers.regionBorders}
                     toggleLayer={() => toggleLayer('regionBorders')}
                     id="regionBorders"

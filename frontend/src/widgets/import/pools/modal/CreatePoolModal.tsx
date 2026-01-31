@@ -50,6 +50,7 @@ function CreatePoolModal() {
 
   const [map, setMap] = useState<Map | null>(null);
   const [name, setName] = useState("");
+  const [description, setDescription] = useState("Бассейн");
   const [geojson, setGeojson] = useState<FeatureCollection | null>(null);
   const [selectedSites, setSelectedSites] = useState<number[]>([]);
   const [selectedSpatials, setSelectedSpatials] = useState<number[]>([]);
@@ -86,6 +87,7 @@ function CreatePoolModal() {
     setLoading(true);
     const payload = {
       name,
+      description,
       geojson,
       siteIds: selectedSites,
       spatialIds: selectedSpatials,
@@ -103,7 +105,7 @@ function CreatePoolModal() {
       );
       const resData = res.data;
 
-      const newPools = [...pools]; // Create a copy for immutability best practice
+      const newPools = [...pools]; 
       newPools.push(resData.data);
       setPools(newPools);
 
@@ -114,6 +116,7 @@ function CreatePoolModal() {
       setSelectedSpatials([]);
       setName("");
       setGeojson(null);
+      setDescription("Бассейн");
     } catch (error) {
       console.error(error);
       toast.error("Ошибка при создании бассейна");
@@ -127,7 +130,6 @@ function CreatePoolModal() {
 
     try {
       const onLoad = () => {
-        // Удаляем старые слои и источник
         if (map.getSource("geojson-preview")) {
           [
             "geojson-preview-fill",
@@ -139,10 +141,8 @@ function CreatePoolModal() {
           map.removeSource("geojson-preview");
         }
 
-        // Добавляем новый источник
         map.addSource("geojson-preview", { type: "geojson", data: geojson });
 
-        // Слой для полигонов (заливка)
         map.addLayer({
           id: "geojson-preview-fill",
           type: "fill",
@@ -151,7 +151,6 @@ function CreatePoolModal() {
           filter: ["==", "$type", "Polygon"],
         });
 
-        // Слой для линий
         map.addLayer({
           id: "geojson-preview-line",
           type: "line",
@@ -160,7 +159,6 @@ function CreatePoolModal() {
           filter: ["in", "$type", "Polygon", "LineString"],
         });
 
-        // Слой для точек
         map.addLayer({
           id: "geojson-preview-points",
           type: "circle",
@@ -169,7 +167,6 @@ function CreatePoolModal() {
           filter: ["==", "$type", "Point"],
         });
 
-        // Авто-центрирование
         if (
           geojson.type === "FeatureCollection" &&
           geojson.features.length > 0
@@ -187,7 +184,9 @@ function CreatePoolModal() {
                 coords.push(...(g.coordinates as number[][]));
                 break;
               case "Polygon":
-                (g.coordinates as number[][][]).forEach((ring) => coords.push(...ring));
+                (g.coordinates as number[][][]).forEach((ring) =>
+                  coords.push(...ring),
+                );
                 break;
               case "MultiPolygon":
                 (g.coordinates as number[][][][]).forEach((poly) =>
@@ -204,7 +203,6 @@ function CreatePoolModal() {
               [Math.min(...lons), Math.min(...lats)],
               [Math.max(...lons), Math.max(...lats)],
             ];
-            // Basic validation
             if (isFinite(bounds[0][0]) && isFinite(bounds[0][1])) {
               map.fitBounds(bounds, { padding: 20 });
             }
@@ -248,12 +246,21 @@ function CreatePoolModal() {
 
         <div className="grid grid-cols-2 gap-6 h-124">
           <div className="flex flex-col gap-3">
-            <Typography fontWeight={500}>Название бассейна</Typography>
+            <Typography fontWeight={500}>Название</Typography>
             <TextField
               label="Название"
               size="small"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              fullWidth
+            />
+
+            <Typography fontWeight={500}>Описание</Typography>
+            <TextField
+              label="Описание"
+              size="small"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
               fullWidth
             />
 
@@ -354,11 +361,7 @@ function CreatePoolModal() {
           <Button variant="outlined" onClick={() => setCreatePoolModal(false)}>
             Отмена
           </Button>
-          <Button
-            variant="contained"
-            onClick={handleSubmit}
-            disabled={!name || !geojson}
-          >
+          <Button variant="contained" onClick={handleSubmit} disabled={!name}>
             Создать
           </Button>
         </div>

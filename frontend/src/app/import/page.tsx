@@ -53,7 +53,7 @@ export default function ImportPage() {
           <Tabs value={currentPage} onChange={handleChange}>
             <Tab label="Табличные данные" />
             <Tab label="Пространственные данные" />
-            <Tab label="Бассейны" />
+            <Tab label="Бассейны и категории" />
           </Tabs>
         </div>
 

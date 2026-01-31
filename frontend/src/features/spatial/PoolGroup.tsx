@@ -28,7 +28,7 @@ const PoolGroup = ({ pool, isExpanded, onToggleExpand }: PoolGroupProps) => {
       >
         <ListItemText
           primary={<Typography fontWeight={600}>{pool.name}</Typography>}
-          secondary="Бассейн"
+          secondary={pool.description}
         />
         {isExpanded ? <ExpandLess /> : <ExpandMore />}
       </ListItemButton>

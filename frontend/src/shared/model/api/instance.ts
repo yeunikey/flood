@@ -7,7 +7,8 @@ export const defaultOptions: Record<string, string> = {
 export const baseUrl =
   process.env.NEXT_PUBLIC_URL || "https://panel-api.flood.astanait.edu.kz/v1";
 export const socketUrl =
-  process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3001";
+  process.env.NEXT_PUBLIC_SOCKET_URL ||
+  "https://panel-api.flood.astanait.edu.kz";
 
 export const api = xior.create({
   baseURL: baseUrl,

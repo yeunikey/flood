@@ -12,6 +12,10 @@ export class PoolUpdateDto {
   name?: string;
 
   @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
   geojson?: FeatureCollection;
 
   @IsOptional()

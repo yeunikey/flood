@@ -2,7 +2,12 @@
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { BadRequestException, Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, DeepPartial, In, Repository } from 'typeorm';
 import { Category } from './entities/category.entity';
@@ -16,6 +21,24 @@ import { Group } from './entities/group';
 import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Site } from '../sites/entities/site';
 import { SiteType } from '../sites/entities/site_type';
+
+interface ByDateResponse {
+  data: {
+    content: {
+      group: Group;
+      values: {
+        id: number;
+        value: string;
+        variable: Variable;
+      }[];
+    }[];
+    start: Date | null;
+    end: Date | null;
+    minDate: Date | null;
+    maxDate: Date | null;
+    total: number;
+  };
+}
 
 interface DataRowDto {
   date_utc: string;
@@ -322,7 +345,7 @@ export class DataService {
     siteCode: string,
     start?: Date,
     end?: Date,
-  ) {
+  ): Promise<ByDateResponse> {
     const allDates = await this.groupRepo
       .createQueryBuilder('group')
       .leftJoin('group.category', 'category')
@@ -603,63 +626,50 @@ export class DataService {
     return Array.from(groups.values());
   }
 
-  // async loadDataValues(data: DataValue[][]) {
-  //     const results: DataValue[][] = [];
+  async generateCsv(
+    categoryId: number,
+    siteCode: string,
+    start?: Date,
+    end?: Date,
+  ): Promise<string> {
+    const { data } = await this.findGroupsByCategoryAndSiteCodeByDate(
+      categoryId,
+      siteCode,
+      start,
+      end,
+    );
 
-  //     for (const groupItems of data) {
-  //         const group = await this.groupRepo.save({});
+    if (!data.content.length) {
+      return '';
+    }
 
-  //         const groupResults: DataValue[] = [];
+    const variableMap = new Map<number, string>();
+    data.content.forEach((row) => {
+      row.values.forEach((v) => {
+        variableMap.set(
+          v.variable.id,
+          `${v.variable.name} [${v.variable.unit.symbol}]`,
+        );
+      });
+    });
 
-  //         for (const item of groupItems) {
-  //             const qcl = await this.qclRepo.findOne({ where: { name: item.qcl.name } }) ??
-  //                 await this.qclRepo.save(item.qcl);
+    const variableIds = Array.from(variableMap.keys());
+    const header = ['Date UTC', ...Array.from(variableMap.values())].join(',');
 
-  //             const category = await this.categoryRepo.findOne({ where: { name: item.category.name } }) ??
-  //                 await this.categoryRepo.save(item.category);
+    const rows = data.content.map((row) => {
+      const date =
+        row.group.date_utc instanceof Date
+          ? row.group.date_utc.toISOString()
+          : new Date(row.group.date_utc).toISOString();
 
-  //             const unit = await this.unitRepo.findOne({ where: { name: item.catalog.variable.unit.name } }) ??
-  //                 await this.unitRepo.save(item.catalog.variable.unit);
+      const values = variableIds.map((vid) => {
+        const found = row.values.find((v) => v.variable.id === vid);
+        return found ? found.value : '';
+      });
 
-  //             const variable = await this.variableRepo.findOne({ where: { name: item.catalog.variable.name } }) ??
-  //                 await this.variableRepo.save({
-  //                     name: item.catalog.variable.name,
-  //                     description: item.catalog.variable.description,
-  //                     unit: unit
-  //                 });
+      return [date, ...values].join(',');
+    });
 
-  //             const method = await this.methodRepo.findOne({ where: { name: item.catalog.method.name } }) ??
-  //                 await this.methodRepo.save(item.catalog.method);
-
-  //             const source = await this.sourceRepo.findOne({ where: { name: item.catalog.source.name } }) ??
-  //                 await this.sourceRepo.save(item.catalog.source);
-
-  //             const siteType = await this.siteTypeRepo.findOne({ where: { name: item.catalog.site.siteType.name } }) ??
-  //                 await this.siteTypeRepo.save(item.catalog.site.siteType);
-
-  //             const site = await this.siteRepo.findOne({ where: { code: item.catalog.site.code } }) ??
-  //                 await this.siteRepo.save({
-  //                     ...item.catalog.site,
-  //                     siteType
-  //                 });
-
-  //             const catalog = await this.catalogRepo.save({ site, variable, method, source });
-
-  //             const savedValue = await this.dataValueRepo.save({
-  //                 catalog,
-  //                 category,
-  //                 date_utc: item.date_utc,
-  //                 value: item.value,
-  //                 qcl,
-  //                 group
-  //             });
-
-  //             groupResults.push(savedValue);
-  //         }
-
-  //         results.push(groupResults);
-  //     }
-
-  //     return results;
-  // }
+    return [header, ...rows].join('\n');
+  }
 }

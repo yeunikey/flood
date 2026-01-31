@@ -1,14 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import {
-  Box,
-  Button,
-  Collapse,
-  List,
-  ListItemButton,
-  ListItemText,
-  Typography,
-} from "@mui/material";
-import { ExpandLess, ExpandMore } from "@mui/icons-material";
+import { Box, Button, List, Divider } from "@mui/material";
 
 import { usePools } from "@/entities/pool/model/usePools";
 import { useLayers } from "@/entities/layer/model/useLayers";
@@ -69,6 +60,13 @@ function AnalyticItems() {
       .filter((l) => l.sites.length > 0);
   }, [pools, layers]);
 
+  const validPools = pools
+    .filter((p) => p.sites.length > 0)
+    .sort((a, b) => (a.description || "").localeCompare(b.description || ""));
+
+  const basinPools = validPools.filter((p) => p.description === "Бассейн");
+  const otherPools = validPools.filter((p) => p.description !== "Бассейн");
+
   return (
     <List dense className="pb-32!">
       <Box className="flex gap-1 px-6 mb-6">
@@ -83,7 +81,7 @@ function AnalyticItems() {
         </Button>
       </Box>
 
-      {pools.filter(p => p.sites.length > 0).map((pool) => (
+      {basinPools.map((pool) => (
         <PoolGroup
           key={pool.id}
           pool={pool}
@@ -98,6 +96,29 @@ function AnalyticItems() {
           onTooltipToggle={handleTooltipToggle}
         />
       ))}
+
+      {basinPools.length > 0 && otherPools.length > 0 && (
+        <Divider component="li" />
+      )}
+
+      {otherPools.map((pool) => (
+        <PoolGroup
+          key={pool.id}
+          pool={pool}
+          layers={layers}
+          isExpanded={activePools.some((p) => p.id === pool.id)}
+          onToggleExpand={() => togglePool(pool)}
+          expandedList={expanded}
+          onExpandGroup={toggleExpand}
+          activeSites={activeSites}
+          toggleSite={handleToggleSite}
+          activeTooltipId={activeTooltipId}
+          onTooltipToggle={handleTooltipToggle}
+        />
+      ))}
+
+      {(basinPools.length > 0 || otherPools.length > 0) &&
+        standaloneSites.length > 0 && <Divider component="li" />}
 
       {standaloneSites.length > 0 && (
         <div>

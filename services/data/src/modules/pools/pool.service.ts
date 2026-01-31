@@ -34,12 +34,14 @@ export class PoolService {
 
   async create(
     name: string,
+    description: string,
     geojson: FeatureCollection,
     siteIds: number[],
     spatialIds?: number[],
   ) {
     const pool = await this.poolRepository.save({
       name,
+      description,
       geojson,
     });
 
@@ -57,11 +59,13 @@ export class PoolService {
   async update(
     pool: Pool,
     name?: string,
+    description?: string,
     geojson?: FeatureCollection,
     siteIds?: number[],
     spatialIds?: number[],
   ) {
     if (name !== undefined) pool.name = name;
+    if (description !== undefined) pool.description = description;
     if (geojson !== undefined) pool.geojson = geojson;
 
     await this.poolRepository.save(pool);

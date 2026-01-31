@@ -3,7 +3,14 @@
 import * as React from "react";
 
 import { AppBar, Drawer, DrawerHeader } from "@/shared/model/mixin/view";
-import { Avatar, InputBase, Menu, MenuItem, Paper } from "@mui/material";
+import {
+  Avatar,
+  Menu,
+  MenuItem,
+  Paper,
+  Autocomplete,
+  TextField,
+} from "@mui/material";
 
 import Box from "@mui/material/Box";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
@@ -31,11 +38,24 @@ import { ways } from "@/configs/paths";
 import { useSettings } from "@/features/settings/model/useSettings";
 import SettingsWidget from "@/widgets/settings/SettingsWidget";
 import { baseUrl } from "../model/api/instance";
+import { usePools } from "@/entities/pool/model/usePools";
+import { useLayers } from "@/entities/layer/model/useLayers";
+import { useSearch } from "@/features/search/useSearch";
+import { useMonitorStore } from "@/features/monitor/model/useMontorStore";
+import Site from "@/entities/site/types/site";
+import Pool from "@/entities/pool/types/pool";
+import { Category } from "@/entities/category/types/categories";
 
 interface ViewProps {
   children?: React.ReactNode;
   links?: string[];
   className?: string;
+}
+
+interface SearchOption {
+  site: Site;
+  category: Pool | Category;
+  id: number;
 }
 
 function View({ children, links, className }: ViewProps) {
@@ -46,6 +66,29 @@ function View({ children, links, className }: ViewProps) {
   const [open, setOpen] = React.useState(false);
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const { setOpenSettings } = useSettings();
+  const { query, setQuery } = useSearch();
+  const { setSelectedCategory, setSelectedSite } = useMonitorStore();
+
+  const { pools } = usePools();
+  const { layers } = useLayers();
+
+  const options = React.useMemo(() => {
+    const opts: SearchOption[] = [];
+    const seen = new Set<string>();
+
+    layers.forEach((l) => {
+      l.sites.forEach((s) => {
+        if (s.name) {
+          const key = `${l.category.name}-${s.name}`;
+          if (!seen.has(key)) {
+            opts.push({ site: s, category: l.category, id: s.id });
+            seen.add(key);
+          }
+        }
+      });
+    });
+    return opts;
+  }, [pools, layers]);
 
   const handleDrawerOpen = () => {
     setOpen(true);
@@ -103,11 +146,62 @@ function View({ children, links, className }: ViewProps) {
               }}
               elevation={0}
               className=""
+              onSubmit={(e) => {
+                e.preventDefault();
+              }}
             >
-              <InputBase
-                sx={{ ml: 1, flex: 1, fontSize: 14 }}
-                placeholder="Поиск населённых пунктов, гидропостов или других объектов"
-                inputProps={{ "aria-label": "search google maps" }}
+              <Autocomplete
+                freeSolo
+                sx={{ ml: 1, flex: 1 }}
+                options={options}
+                inputValue={query}
+                onInputChange={(_, newInputValue) => {
+                  setQuery(newInputValue);
+                }}
+                onChange={(_, value) => {
+                  if (value && typeof value !== "string") {
+                    router.push(`/`);
+                    setSelectedCategory(value.category);
+                    setSelectedSite(value.site);
+                  }
+                }}
+                getOptionLabel={(option) =>
+                  typeof option === "string" ? option : option.site.name
+                }
+                renderOption={(props, option) => {
+                  const { key, ...rest } = props;
+                  return (
+                    <li
+                      key={`${option.category.name}-${option.site.name}-${option.id}`}
+                      {...rest}
+                    >
+                      <div className="flex flex-col">
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{ lineHeight: 1 }}
+                        >
+                          {option.category.name}
+                        </Typography>
+                        <Typography variant="body2">
+                          {option.site.name}
+                        </Typography>
+                      </div>
+                    </li>
+                  );
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Поиск метеостанции, гидропостов или других объектов"
+                    variant="standard"
+                    InputProps={{
+                      ...params.InputProps,
+                      disableUnderline: true,
+                      sx: { fontSize: 14 },
+                    }}
+                  />
+                )}
               />
               <IconButton type="button" sx={{ p: "10px" }} aria-label="search">
                 <SearchIcon />
