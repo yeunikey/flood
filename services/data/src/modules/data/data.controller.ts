@@ -96,7 +96,11 @@ export class DataController {
   }
 
   @Get('category/:id/variables')
-  async categoryVariables(@Param('id') categoryId: number) {
+  async categoryVariables(
+    @Param('id') categoryId: number,
+    @Query('sourceId') sourceId?: string,
+    @Query('siteCode') siteCode?: string,
+  ) {
     const category = await this.dataService.findCategoryById(categoryId);
 
     if (!category) {
@@ -106,9 +110,15 @@ export class DataController {
       };
     }
 
+    const parsedSourceId = sourceId ? parseInt(sourceId) : undefined;
+
     return {
       statusCode: 200,
-      data: await this.dataService.getVariablesByCategory(categoryId),
+      data: await this.dataService.getVariablesByCategory(
+        categoryId,
+        parsedSourceId,
+        siteCode,
+      ),
     };
   }
 
@@ -161,15 +171,21 @@ export class DataController {
     @Param('siteCode') siteCode: string,
     @Query('page') page = '1',
     @Query('limit') limit = '20',
+    @Query('sourceId') sourceId?: string,
   ) {
     const pageNumber = Number(page) || 1;
     const limitNumber = Number(limit) || 20;
+    const parsedSourceId = sourceId ? parseInt(sourceId) : undefined;
 
     const result =
       await this.dataService.findGroupsByCategoryAndSiteCodePaginated(
         categoryId,
         siteCode,
-        { page: pageNumber, limit: limitNumber },
+        {
+          page: pageNumber,
+          limit: limitNumber,
+          sourceId: parsedSourceId,
+        },
       );
 
     return {
@@ -184,12 +200,16 @@ export class DataController {
     @Param('siteCode') siteCode: string,
     @Query('start') start?: string,
     @Query('end') end?: string,
+    @Query('sourceId') sourceId?: string,
   ) {
+    const parsedSourceId = sourceId ? parseInt(sourceId) : undefined;
+
     const result = await this.dataService.findGroupsByCategoryAndSiteCodeByDate(
       categoryId,
       siteCode,
       start ? new Date(start) : undefined,
       end ? new Date(end) : undefined,
+      parsedSourceId,
     );
 
     return {
@@ -206,9 +226,11 @@ export class DataController {
     @Query('limit') limit = '20',
     @Query('start') start?: string,
     @Query('end') end?: string,
+    @Query('sourceId') sourceId?: string,
   ) {
     const pageNumber = Number(page) || 1;
     const limitNumber = Number(limit) || 20;
+    const parsedSourceId = sourceId ? parseInt(sourceId) : undefined;
 
     const result =
       await this.dataService.findGroupsByCategoryAndSiteCodePaginatedWithDate(
@@ -219,6 +241,7 @@ export class DataController {
           limit: limitNumber,
           start: start ? new Date(start) : undefined,
           end: end ? new Date(end) : undefined,
+          sourceId: parsedSourceId,
         },
       );
 

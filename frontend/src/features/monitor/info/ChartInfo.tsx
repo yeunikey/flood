@@ -1,4 +1,5 @@
-import { useEffect, useState, useMemo, useRef } from "react";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/shared/model/auth";
 import { useMonitorStore } from "../model/useMontorStore";
 import { api } from "@/shared/model/api/instance";
@@ -7,8 +8,13 @@ import { useDisabledVariables } from "../model/useDisabledVariables";
 import VariablesSettingsModal from "../modal/VariablesSettingsModal";
 import {
   Button,
+  FormControl,
+  InputLabel,
   LinearProgress,
+  MenuItem,
   Paper,
+  Select,
+  SelectChangeEvent,
   Table,
   TableBody,
   TableCell,
@@ -23,7 +29,7 @@ import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import Variable from "@/entities/variable/types/variable";
-import { GroupedData } from "@/shared/model/types/response";
+import DataSource from "@/entities/source/types/sources";
 
 interface ChartValue {
   date: string;
@@ -40,12 +46,30 @@ interface Stats {
   p75: number;
 }
 
+interface VariablesResponse {
+  variables: Variable[];
+  sources: DataSource[];
+}
+
+interface GroupedData {
+  group: {
+    id: number;
+    date_utc: string;
+    category: { id: number; name: string };
+    site: { id: number; code: string; name: string };
+    source: DataSource;
+  };
+  values: {
+    id: number;
+    value: string;
+    variable: Variable;
+  }[];
+}
+
 const calculateStats = (inputValues: number[]): Stats | null => {
   if (inputValues.length === 0) return null;
-  // ВАЖНО: Создаем копию через [...inputValues], чтобы не сортировать исходный массив,
-  // который используется в графике
   const values = [...inputValues].sort((a, b) => a - b);
-  
+
   const sum = values.reduce((a, b) => a + b, 0);
   const mean = sum / values.length;
   const squareDiffs = values.map((v) => (v - mean) ** 2);
@@ -75,10 +99,13 @@ const calculateStats = (inputValues: number[]): Stats | null => {
 
 function ChartInfo() {
   const { token } = useAuth();
-  const { selectedSite, selectedCategory } = useMonitorStore();
+  const { selectedSite, selectedCategory, selectedSource, setSelectedSource } =
+    useMonitorStore();
   const { disabledVariables } = useDisabledVariables();
 
   const [variables, setVariables] = useState<Variable[]>([]);
+  const [availableSources, setAvailableSources] = useState<DataSource[]>([]);
+
   const [chartData, setChartData] = useState<Record<number, ChartValue[]>>({});
   const [loading, setLoading] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -87,8 +114,6 @@ function ChartInfo() {
   const [toDate, setToDate] = useState<Date | null>(null);
   const [globalMin, setGlobalMin] = useState<Date | null>(new Date());
   const [globalMax, setGlobalMax] = useState<Date | null>(new Date());
-
-  const prevSiteCodeRef = useRef<string | null>(null);
 
   const safeDate = (d: Date | string | null | undefined): Date | undefined => {
     if (!d) return undefined;
@@ -99,7 +124,6 @@ function ChartInfo() {
   const getMinFromDate = () => {
     let min = safeDate(globalMin);
     const currentTo = safeDate(toDate);
-
     if (currentTo) {
       const limitDate = new Date(currentTo);
       limitDate.setFullYear(limitDate.getFullYear() - 10);
@@ -113,7 +137,6 @@ function ChartInfo() {
   const getMaxToDate = () => {
     let max = safeDate(globalMax);
     const currentFrom = safeDate(fromDate);
-
     if (currentFrom) {
       const limitDate = new Date(currentFrom);
       limitDate.setFullYear(limitDate.getFullYear() + 10);
@@ -125,34 +148,43 @@ function ChartInfo() {
   };
 
   useEffect(() => {
-    if (selectedSite?.code && prevSiteCodeRef.current !== selectedSite.code) {
-      setFromDate(null);
-      setToDate(null);
-      setChartData({});
-      setGlobalMin(new Date());
-      setGlobalMax(new Date());
-      prevSiteCodeRef.current = selectedSite.code;
-    }
-  }, [selectedSite?.code]);
-
-  useEffect(() => {
     if (!selectedCategory || !token) return;
-    api
-      .get<ApiResponse<Variable[]>>(
-        `/data/category/${selectedCategory.id}/variables`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      )
-      .then(({ data }) => setVariables(data.data));
-  }, [selectedCategory, token]);
+
+    const controller = new AbortController();
+
+    const fetchVariables = async () => {
+      try {
+        const params: Record<string, string | number> = {};
+        if (selectedSource) params.sourceId = selectedSource.id;
+        if (selectedSite) params.siteCode = selectedSite.code;
+
+        const { data } = await api.get<ApiResponse<VariablesResponse>>(
+          `/data/category/${selectedCategory.id}/variables`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+            params,
+            signal: controller.signal,
+          },
+        );
+
+        setVariables(data.data.variables);
+        setAvailableSources(data.data.sources);
+      } catch (error: any) {
+        if (error.name !== "CanceledError" && error.name !== "AbortError") {
+          console.error(error);
+        }
+      }
+    };
+
+    fetchVariables();
+
+    return () => controller.abort();
+  }, [selectedCategory, token, selectedSite]);
 
   useEffect(() => {
     if (!selectedSite || !selectedCategory || !token) return;
 
-    if (selectedSite.code !== prevSiteCodeRef.current && (fromDate || toDate)) {
-      return;
-    }
+    const controller = new AbortController();
 
     const fetchCharts = async () => {
       if (fromDate && toDate) {
@@ -166,6 +198,7 @@ function ChartInfo() {
         const params: Record<string, string> = {};
         if (fromDate) params.start = fromDate.toISOString();
         if (toDate) params.end = toDate.toISOString();
+        if (selectedSource) params.sourceId = selectedSource.id.toString();
 
         const res = await api.get<
           ApiResponse<{
@@ -181,6 +214,7 @@ function ChartInfo() {
           {
             headers: { Authorization: `Bearer ${token}` },
             params,
+            signal: controller.signal,
           },
         );
 
@@ -195,12 +229,18 @@ function ChartInfo() {
           if (!fromDate && !toDate) {
             const start = new Date(maxD);
             start.setDate(maxD.getDate() - 30);
-
             setFromDate(start);
             setToDate(maxD);
           }
 
           if (content) {
+            if (!selectedSource && content.length > 0) {
+              const detectedSource = content[0].group.source;
+              if (detectedSource) {
+                setSelectedSource(detectedSource);
+              }
+            }
+
             const newData: Record<number, ChartValue[]> = {};
 
             content.forEach((groupItem) => {
@@ -232,21 +272,41 @@ function ChartInfo() {
             setChartData({});
           }
         }
-      } catch (e) {
-        console.error(e);
-        setChartData({});
+      } catch (error: any) {
+        if (error.name !== "CanceledError" && error.name !== "AbortError") {
+          console.error(error);
+          setChartData({});
+        }
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchCharts();
-  }, [selectedSite, selectedCategory, fromDate, toDate, token]);
+
+    return () => controller.abort();
+  }, [
+    selectedSite,
+    selectedCategory,
+    fromDate,
+    toDate,
+    token,
+    selectedSource,
+    setSelectedSource,
+  ]);
 
   const activeVariables = useMemo(
     () => variables.filter((v) => !disabledVariables.includes(v.id)),
     [variables, disabledVariables],
   );
+
+  const handleSourceChange = (event: SelectChangeEvent<number>) => {
+    const sourceId = Number(event.target.value);
+    const source = availableSources.find((s) => s.id === sourceId) || null;
+    setSelectedSource(source);
+  };
 
   return (
     <Zoom in={true} timeout={600}>
@@ -290,6 +350,21 @@ function ChartInfo() {
               />
             </div>
           </LocalizationProvider>
+
+          <FormControl size="small" sx={{ minWidth: 150 }}>
+            <InputLabel>Источник</InputLabel>
+            <Select
+              value={selectedSource?.id ?? ""}
+              label="Источник"
+              onChange={handleSourceChange}
+            >
+              {availableSources.map((source) => (
+                <MenuItem key={source.id} value={source.id}>
+                  {source.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
         </div>
 
         <VariablesSettingsModal
@@ -303,8 +378,6 @@ function ChartInfo() {
             const data = chartData[variable.id] || [];
             const dates = data.map((d) => new Date(d.date));
             const values = data.map((d) => d.value);
-            // values передается в calculateStats, которая раньше сортировала их "на месте",
-            // ломая порядок для графика. Теперь calculateStats делает копию.
             const stats = calculateStats(values);
 
             return (
@@ -347,7 +420,7 @@ function ChartInfo() {
                       ]}
                       series={[
                         {
-                          data: values, // Теперь values остаются отсортированными по времени (как и dates)
+                          data: values,
                           label: variable.name,
                           showMark: false,
                           connectNulls: true,

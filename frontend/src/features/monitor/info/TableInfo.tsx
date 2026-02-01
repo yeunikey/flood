@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useAuth } from "@/shared/model/auth";
 import {
   Button,
@@ -11,17 +12,24 @@ import {
   TablePagination,
   Zoom,
   Tooltip,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  SelectChangeEvent,
+  LinearProgress,
 } from "@mui/material";
 import { useMonitorStore } from "../model/useMontorStore";
 import { api } from "@/shared/model/api/instance";
 import { useEffect, useState } from "react";
 import { ApiResponse } from "@/types";
 import TuneIcon from "@mui/icons-material/Tune";
-import OpenInFullIcon from "@mui/icons-material/OpenInFull"; // Иконка для фуллскрина
+import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import { useDisabledVariables } from "../model/useDisabledVariables";
 
 import VariablesSettingsModal from "../modal/VariablesSettingsModal";
 import FullscreenTableModal from "../modal/FullscreenInfoModal";
+import DataSource from "@/entities/source/types/sources";
 
 interface Variable {
   id: number;
@@ -52,39 +60,115 @@ interface PaginatedResult<T> {
 function TableInfo() {
   const { disabledVariables } = useDisabledVariables();
   const { token } = useAuth();
-  const { selectedSite, selectedCategory } = useMonitorStore();
+  const { selectedSite, selectedCategory, selectedSource, setSelectedSource } =
+    useMonitorStore();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [fullscreenOpen, setFullscreenOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const [infoVariables, setInfoVariables] = useState<Variable[]>([]);
+  const [availableSources, setAvailableSources] = useState<DataSource[]>([]);
+
   const [infoData, setInfoData] = useState<GroupedData[]>([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalRows, setTotalRows] = useState(0);
 
   useEffect(() => {
-    api
-      .get<
-        ApiResponse<Variable[]>
-      >(`/data/category/${selectedCategory?.id}/variables`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(({ data }) => setInfoVariables(data.data));
-  }, [selectedCategory, selectedSite, token]);
+    if (!selectedCategory || !token) return;
+
+    const controller = new AbortController();
+
+    const fetchVariables = async () => {
+      try {
+        const params: Record<string, string | number> = {};
+        if (selectedSource) params.sourceId = selectedSource.id;
+        if (selectedSite) params.siteCode = selectedSite.code;
+
+        const { data } = await api.get<
+          ApiResponse<{
+            variables: Variable[];
+            sources: DataSource[];
+          }>
+        >(`/data/category/${selectedCategory.id}/variables`, {
+          headers: { Authorization: `Bearer ${token}` },
+          params,
+          signal: controller.signal,
+        });
+
+        setInfoVariables(data.data.variables);
+        setAvailableSources(data.data.sources);
+
+        if (data.data.sources.length > 0) {
+          const currentSourceValid =
+            selectedSource &&
+            data.data.sources.some((s) => s.id === selectedSource.id);
+
+          if (!currentSourceValid) {
+            setSelectedSource(data.data.sources[0]);
+          }
+        }
+      } catch (error: any) {
+        if (error.name !== "CanceledError" && error.name !== "AbortError") {
+          console.error(error);
+        }
+      }
+    };
+
+    fetchVariables();
+
+    return () => controller.abort();
+  }, [selectedCategory, token, selectedSite]);
 
   useEffect(() => {
+    if (!selectedCategory || !selectedSite || !token) return;
+
+    const controller = new AbortController();
+
     const fetchData = async () => {
-      const res = await api.get<ApiResponse<PaginatedResult<GroupedData>>>(
-        `/data/category/${selectedCategory?.id}/by-site/${selectedSite?.code}/paginated`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          params: { page: page + 1, limit: rowsPerPage },
-        },
-      );
-      setInfoData(res.data.data.content);
-      setTotalRows(res.data.data.total);
+      setLoading(true);
+      try {
+        const params: Record<string, string | number> = {
+          page: page + 1,
+          limit: rowsPerPage,
+        };
+        if (selectedSource) {
+          params.sourceId = selectedSource.id;
+        }
+
+        const res = await api.get<ApiResponse<PaginatedResult<GroupedData>>>(
+          `/data/category/${selectedCategory.id}/by-site/${selectedSite.code}/paginated`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+            params,
+            signal: controller.signal,
+          },
+        );
+        setInfoData(res.data.data.content);
+        setTotalRows(res.data.data.total);
+      } catch (error: any) {
+        if (error.name !== "CanceledError" && error.name !== "AbortError") {
+          console.error(error);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      }
     };
+
     fetchData();
-  }, [selectedCategory, selectedSite, page, rowsPerPage, token]);
+
+    return () => controller.abort();
+  }, [
+    selectedCategory,
+    selectedSite,
+    page,
+    rowsPerPage,
+    token,
+    selectedSource,
+  ]);
 
   const handleChangePage = (_: unknown, newPage: number) => setPage(newPage);
   const handleChangeRowsPerPage = (
@@ -94,28 +178,46 @@ function TableInfo() {
     setPage(0);
   };
 
+  const handleSourceChange = (event: SelectChangeEvent<number>) => {
+    const sourceId = Number(event.target.value);
+    const source = availableSources.find((s) => s.id === sourceId) || null;
+    setSelectedSource(source);
+    setPage(0);
+  };
+
   return (
     <Zoom in={true} timeout={600}>
       <div className="flex flex-col h-full w-full">
-        <div className="flex-none mb-4 flex gap-2">
+        <div className="flex-none mb-4 flex gap-2 items-center flex-wrap">
           <Button
             variant="outlined"
             startIcon={<TuneIcon />}
             onClick={() => setSettingsOpen(true)}
-            size="small"
           >
             Переменные
           </Button>
 
           <Tooltip title="На весь экран">
-            <Button
-              variant="outlined"
-              onClick={() => setFullscreenOpen(true)}
-              size="small"
-            >
-              <OpenInFullIcon fontSize="small" />
+            <Button variant="outlined" onClick={() => setFullscreenOpen(true)}>
+              <OpenInFullIcon />
             </Button>
           </Tooltip>
+
+          <FormControl sx={{ maxWidth: 258 }}>
+            <InputLabel>Источник</InputLabel>
+            <Select
+              value={selectedSource?.id ?? ""}
+              label="Источник"
+              onChange={handleSourceChange}
+              size="small"
+            >
+              {availableSources.map((source) => (
+                <MenuItem key={source.id} value={source.id}>
+                  {source.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
 
           <VariablesSettingsModal
             open={settingsOpen}
@@ -131,6 +233,18 @@ function TableInfo() {
         </div>
 
         <div className="flex-1 relative min-h-0 border border-gray-200 rounded-lg overflow-hidden">
+          {loading && (
+            <LinearProgress
+              sx={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                zIndex: 10,
+                borderRadius: "8px 8px 0 0",
+              }}
+            />
+          )}
           <div className="absolute inset-0 flex flex-col bg-white">
             <Paper
               sx={{

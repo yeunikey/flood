@@ -223,19 +223,47 @@ export class DataService {
     return this.categoryRepo.save(category);
   }
 
-  async getVariablesByCategory(categoryId: number) {
-    const cached = await this.cacheManager.get(`variables:${categoryId}`);
+  async getVariablesByCategory(
+    categoryId: number,
+    sourceId?: number,
+    siteCode?: string,
+  ) {
+    const cacheKey = `variables:${categoryId}:${sourceId ?? 'all'}:${siteCode ?? 'all'}`;
+    const cached = await this.cacheManager.get(cacheKey);
 
     if (cached) {
       return cached;
     }
 
-    const rawVariables = await this.dataValueRepo
+    const sourceQb = this.dataSource
+      .getRepository(DataSourceType)
+      .createQueryBuilder('source')
+      .innerJoin(Group, 'group', 'group.source_id = source.id')
+      .innerJoin('group.site', 'site')
+      .where('group.category_id = :categoryId', { categoryId })
+      .distinct(true);
+
+    if (siteCode) {
+      sourceQb.andWhere('site.code = :siteCode', { siteCode });
+    }
+
+    const sources = await sourceQb.getMany();
+
+    let effectiveSourceId = sourceId;
+    if (effectiveSourceId && sources.length > 0) {
+      const isSourceAvailable = sources.some((s) => s.id === effectiveSourceId);
+      if (!isSourceAvailable) {
+        effectiveSourceId = undefined;
+      }
+    }
+
+    const qb = this.dataValueRepo
       .createQueryBuilder('dv')
       .innerJoin('dv.variable', 'variable')
       .innerJoin('variable.unit', 'unit')
       .innerJoin('dv.group', 'grp')
       .innerJoin('grp.category', 'category')
+      .innerJoin('grp.site', 'site')
       .where('category.id = :categoryId', { categoryId })
       .select([
         'variable.id AS id',
@@ -246,18 +274,27 @@ export class DataService {
         'unit.symbol AS unit_symbol',
         'unit.description AS unit_description',
       ])
-      .distinct(true)
-      .getRawMany<{
-        id: number;
-        name: string;
-        description: string | null;
-        unit_id: number;
-        unit_name: string;
-        unit_symbol: string | null;
-        unit_description: string | null;
-      }>();
+      .distinct(true);
 
-    const result = rawVariables.map((v) => ({
+    if (effectiveSourceId) {
+      qb.andWhere('grp.source_id = :sourceId', { sourceId: effectiveSourceId });
+    }
+
+    if (siteCode) {
+      qb.andWhere('site.code = :siteCode', { siteCode });
+    }
+
+    const rawVariables = await qb.getRawMany<{
+      id: number;
+      name: string;
+      description: string | null;
+      unit_id: number;
+      unit_name: string;
+      unit_symbol: string | null;
+      unit_description: string | null;
+    }>();
+
+    const variables = rawVariables.map((v) => ({
       id: v.id,
       name: v.name,
       description: v.description,
@@ -269,13 +306,9 @@ export class DataService {
       },
     }));
 
-    if (result) {
-      await this.cacheManager.set(
-        `variables:${categoryId}`,
-        result,
-        60 * 60 * 1000,
-      );
-    }
+    const result = { variables, sources };
+
+    await this.cacheManager.set(cacheKey, result, 60 * 60 * 1000);
 
     return result;
   }
@@ -345,13 +378,28 @@ export class DataService {
     siteCode: string,
     start?: Date,
     end?: Date,
+    sourceId?: number,
   ): Promise<ByDateResponse> {
-    const allDates = await this.groupRepo
+    const effectiveSourceId = await this.getEffectiveSourceId(
+      categoryId,
+      siteCode,
+      sourceId,
+    );
+
+    const dateQb = this.groupRepo
       .createQueryBuilder('group')
       .leftJoin('group.category', 'category')
       .leftJoin('group.site', 'site')
       .where('category.id = :categoryId', { categoryId })
-      .andWhere('site.code = :siteCode', { siteCode })
+      .andWhere('site.code = :siteCode', { siteCode });
+
+    if (effectiveSourceId) {
+      dateQb.andWhere('group.source_id = :effectiveSourceId', {
+        effectiveSourceId,
+      });
+    }
+
+    const allDates = await dateQb
       .select([
         'MIN(group.date_utc) as "minDate"',
         'MAX(group.date_utc) as "maxDate"',
@@ -383,7 +431,7 @@ export class DataService {
       throw new BadRequestException('Date range cannot exceed 11 years');
     }
 
-    const groups = await this.groupRepo
+    const groupsQb = this.groupRepo
       .createQueryBuilder('group')
       .leftJoinAndSelect('group.site', 'site')
       .leftJoinAndSelect('group.category', 'category')
@@ -392,9 +440,15 @@ export class DataService {
       .leftJoinAndSelect('group.qcl', 'qcl')
       .where('category.id = :categoryId', { categoryId })
       .andWhere('site.code = :siteCode', { siteCode })
-      .andWhere('group.date_utc BETWEEN :start AND :end', { start, end })
-      .orderBy('group.date_utc', 'ASC')
-      .getMany();
+      .andWhere('group.date_utc BETWEEN :start AND :end', { start, end });
+
+    if (effectiveSourceId) {
+      groupsQb.andWhere('group.source_id = :effectiveSourceId', {
+        effectiveSourceId,
+      });
+    }
+
+    const groups = await groupsQb.orderBy('group.date_utc', 'ASC').getMany();
 
     if (groups.length === 0) {
       return {
@@ -410,7 +464,6 @@ export class DataService {
     }
 
     const groupIds = groups.map((g) => g.id);
-
     const dataValues = await this.dataValueRepo.find({
       where: { group: { id: In(groupIds) } },
       relations: ['variable', 'variable.unit'],
@@ -435,24 +488,46 @@ export class DataService {
     };
   }
 
+  private async getEffectiveSourceId(
+    categoryId: number,
+    siteCode: string,
+    requestedSourceId?: number,
+  ): Promise<number | undefined> {
+    if (requestedSourceId) return requestedSourceId;
+
+    const latestGroup = await this.groupRepo.findOne({
+      where: { category: { id: categoryId }, site: { code: siteCode } },
+      relations: ['source'],
+      order: { date_utc: 'DESC' },
+    });
+
+    return latestGroup?.source?.id;
+  }
+
   async findGroupsByCategoryAndSiteCodePaginated(
     categoryId: number,
     siteCode: string,
-    options: { page?: number; limit?: number } = {},
+    options: { page?: number; limit?: number; sourceId?: number } = {},
   ) {
     const page = Math.max(1, options.page ?? 1);
     const limit = Math.max(1, options.limit ?? 20);
     const offset = (page - 1) * limit;
 
+    const effectiveSourceId = await this.getEffectiveSourceId(
+      categoryId,
+      siteCode,
+      options.sourceId,
+    );
+
     const cached = await this.cacheManager.get(
-      `data-paginated:${categoryId}:${siteCode}:${page}:${limit}`,
+      `data-paginated:${categoryId}:${siteCode}:${page}:${limit}:${effectiveSourceId ?? 'def'}`,
     );
 
     if (cached) {
       return cached;
     }
 
-    const [groups, total] = await this.groupRepo
+    const qb = this.groupRepo
       .createQueryBuilder('group')
       .leftJoinAndSelect('group.site', 'site')
       .leftJoinAndSelect('group.category', 'category')
@@ -460,7 +535,15 @@ export class DataService {
       .leftJoinAndSelect('group.source', 'source')
       .leftJoinAndSelect('group.qcl', 'qcl')
       .where('category.id = :categoryId', { categoryId })
-      .andWhere('site.code = :siteCode', { siteCode })
+      .andWhere('site.code = :siteCode', { siteCode });
+
+    if (effectiveSourceId) {
+      qb.andWhere('group.source_id = :effectiveSourceId', {
+        effectiveSourceId,
+      });
+    }
+
+    const [groups, total] = await qb
       .orderBy('group.date_utc', 'DESC')
       .skip(offset)
       .take(limit)
@@ -477,7 +560,6 @@ export class DataService {
     }
 
     const groupIds = groups.map((g) => g.id);
-
     const dataValues = await this.dataValueRepo.find({
       where: { group: { id: In(groupIds) } },
       relations: ['variable', 'variable.unit'],
@@ -500,7 +582,7 @@ export class DataService {
 
     if (result) {
       await this.cacheManager.set(
-        `data-paginated:${categoryId}:${siteCode}:${page}:${limit}`,
+        `data-paginated:${categoryId}:${siteCode}:${page}:${limit}:${effectiveSourceId ?? 'def'}`,
         result,
         60 * 60 * 1000,
       );
@@ -517,18 +599,33 @@ export class DataService {
       limit?: number;
       start?: Date;
       end?: Date;
+      sourceId?: number;
     } = {},
   ) {
     const page = Math.max(1, options.page ?? 1);
     const limit = Math.max(1, options.limit ?? 20);
     const offset = (page - 1) * limit;
 
-    const allDates = await this.groupRepo
+    const effectiveSourceId = await this.getEffectiveSourceId(
+      categoryId,
+      siteCode,
+      options.sourceId,
+    );
+
+    const dateQb = this.groupRepo
       .createQueryBuilder('group')
       .leftJoin('group.category', 'category')
       .leftJoin('group.site', 'site')
       .where('category.id = :categoryId', { categoryId })
-      .andWhere('site.code = :siteCode', { siteCode })
+      .andWhere('site.code = :siteCode', { siteCode });
+
+    if (effectiveSourceId) {
+      dateQb.andWhere('group.source_id = :effectiveSourceId', {
+        effectiveSourceId,
+      });
+    }
+
+    const allDates = await dateQb
       .select([
         'MIN(group.date_utc) as "minDate"',
         'MAX(group.date_utc) as "maxDate"',
@@ -544,6 +641,12 @@ export class DataService {
       .leftJoinAndSelect('group.qcl', 'qcl')
       .where('category.id = :categoryId', { categoryId })
       .andWhere('site.code = :siteCode', { siteCode });
+
+    if (effectiveSourceId) {
+      query.andWhere('group.source_id = :effectiveSourceId', {
+        effectiveSourceId,
+      });
+    }
 
     if (options.start) {
       query.andWhere('group.date_utc >= :start', { start: options.start });
@@ -571,7 +674,6 @@ export class DataService {
     }
 
     const groupIds = groups.map((g) => g.id);
-
     const dataValues = await this.dataValueRepo.find({
       where: { group: { id: In(groupIds) } },
       relations: ['variable', 'variable.unit'],
