@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/set-state-in-effect */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   Modal,
   Paper,
@@ -13,6 +13,12 @@ import {
   Button,
   Typography,
   Zoom,
+  LinearProgress,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  SelectChangeEvent,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import TuneIcon from "@mui/icons-material/Tune";
@@ -27,6 +33,7 @@ import { Category } from "@/entities/category/types/categories";
 import Variable from "@/entities/variable/types/variable";
 import useAnalyticStore from "../model/useAnalyticStore";
 import { GroupedData, PaginatedResult } from "@/shared/model/types/response";
+import DataSource from "@/entities/source/types/sources";
 
 interface FullscreenTableModalProps {
   open: boolean;
@@ -43,7 +50,6 @@ export default function FullscreenTableModal({
   category,
   variables,
 }: FullscreenTableModalProps) {
-  // 1. Получаем весь словарь отключенных переменных
   const disabledVariablesMap = useAnalyticStore(
     (state) => state.disabledVariables,
   );
@@ -53,17 +59,18 @@ export default function FullscreenTableModal({
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [totalRows, setTotalRows] = useState(0);
+  const [loading, setLoading] = useState(false);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [availableSources, setAvailableSources] = useState<DataSource[]>([]);
+  const [selectedSource, setSelectedSource] = useState<DataSource | null>(null);
 
-  // 2. Вычисляем список ID отключенных переменных для ТЕКУЩЕГО сайта и категории
   const currentDisabledIds = useMemo(() => {
     if (!site || !category) return [];
     const key = `${category.id}-${site.id}`;
     return disabledVariablesMap[key] || [];
   }, [disabledVariablesMap, site, category]);
 
-  // 3. Фильтруем переменные, исключая отключенные
   const activeVariables = useMemo(() => {
     return variables.filter((v) => !currentDisabledIds.includes(v.id));
   }, [variables, currentDisabledIds]);
@@ -75,15 +82,64 @@ export default function FullscreenTableModal({
   }, [open, site?.id]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      if (!open || !category?.id || !site?.code) return;
+    if (!open || !category?.id || !site?.code || !token) return;
 
+    const controller = new AbortController();
+
+    const fetchSources = async () => {
       try {
+        const params: Record<string, string | number> = {
+          siteCode: site.code,
+        };
+        if (selectedSource) params.sourceId = selectedSource.id;
+
+        const { data } = await api.get<
+          ApiResponse<{ variables: Variable[]; sources: DataSource[] }>
+        >(`/data/category/${category.id}/variables`, {
+          headers: { Authorization: `Bearer ${token}` },
+          params,
+          signal: controller.signal,
+        });
+
+        setAvailableSources(data.data.sources);
+
+        if (data.data.sources.length > 0) {
+          const valid =
+            selectedSource &&
+            data.data.sources.some((s) => s.id === selectedSource.id);
+          if (!valid) {
+            setSelectedSource(data.data.sources[0]);
+          }
+        }
+      } catch (error) {
+        const err = error as Error;
+        if (err.name !== "CanceledError" && err.name !== "AbortError") {
+          console.error(error);
+        }
+      }
+    };
+
+    fetchSources();
+    return () => controller.abort();
+  }, [open, category?.id, site?.code, token]);
+
+  useEffect(() => {
+    if (!open || !category?.id || !site?.code || !token) return;
+
+    const controller = new AbortController();
+
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const params: any = { page: page + 1, limit: rowsPerPage };
+        if (selectedSource) params.sourceId = selectedSource.id;
+
         const res = await api.get<ApiResponse<PaginatedResult<GroupedData>>>(
           `/data/category/${category.id}/by-site/${site.code}/paginated`,
           {
             headers: { Authorization: `Bearer ${token}` },
-            params: { page: page + 1, limit: rowsPerPage },
+            params,
+            signal: controller.signal,
           },
         );
         if (res.data.data) {
@@ -91,17 +147,31 @@ export default function FullscreenTableModal({
           setTotalRows(res.data.data.total);
         }
       } catch (e) {
-        console.error(e);
+        const err = e as Error;
+        if (err.name !== "CanceledError" && err.name !== "AbortError") {
+          console.error(e);
+        }
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
       }
     };
     fetchData();
-  }, [open, category, site, page, rowsPerPage, token]);
+
+    return () => controller.abort();
+  }, [open, category, site, page, rowsPerPage, token, selectedSource]);
 
   const handleChangePage = (_: unknown, newPage: number) => setPage(newPage);
   const handleChangeRowsPerPage = (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const handleSourceChange = (event: SelectChangeEvent<number>) => {
+    const sourceId = Number(event.target.value);
+    const source = availableSources.find((s) => s.id === sourceId) || null;
+    setSelectedSource(source);
     setPage(0);
   };
 
@@ -119,6 +189,17 @@ export default function FullscreenTableModal({
       <Zoom in={open} timeout={500}>
         <div className="outline-none flex items-center justify-center h-full w-full pointer-events-none">
           <ModalBox className="relative w-[95dvw]! h-[95dvh]! overflow-hidden flex flex-col outline-none pointer-events-auto bg-white rounded-lg shadow-xl">
+            {loading && (
+              <LinearProgress
+                sx={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  zIndex: 10,
+                }}
+              />
+            )}
             <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white">
               <div className="flex items-center gap-4">
                 <Typography
@@ -136,6 +217,21 @@ export default function FullscreenTableModal({
               </div>
 
               <div className="flex items-center gap-3">
+                <FormControl size="small" sx={{ minWidth: 200 }}>
+                  <InputLabel>Источник</InputLabel>
+                  <Select
+                    value={selectedSource?.id ?? ""}
+                    label="Источник"
+                    onChange={handleSourceChange}
+                  >
+                    {availableSources.map((source) => (
+                      <MenuItem key={source.id} value={source.id}>
+                        {source.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
                 <Button
                   variant="outlined"
                   startIcon={<TuneIcon />}
@@ -160,7 +256,7 @@ export default function FullscreenTableModal({
                   overflow: "hidden",
                 }}
               >
-                <TableContainer sx={{ flex: 1 }}>
+                <TableContainer sx={{ flex: 1, opacity: loading ? 0.5 : 1 }}>
                   <Table stickyHeader size="small">
                     <TableHead>
                       <TableRow>
@@ -183,8 +279,6 @@ export default function FullscreenTableModal({
                         >
                           Время измерения
                         </TableCell>
-
-                        {/* Используем отфильтрованные переменные */}
                         {activeVariables.map((v) => (
                           <TableCell
                             key={v.id}
@@ -217,8 +311,6 @@ export default function FullscreenTableModal({
                               },
                             )}
                           </TableCell>
-
-                          {/* Используем отфильтрованные переменные */}
                           {activeVariables.map((variable) => {
                             const value = group.values.find(
                               (e) => e.variable.id === variable.id,

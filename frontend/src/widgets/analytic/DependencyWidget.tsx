@@ -124,6 +124,8 @@ const DependencyWidget: React.FC = () => {
   useEffect(() => {
     if (!token) return;
 
+    const controller = new AbortController();
+
     const datesChanged =
       prevDatesRef.current.from !== fromDate ||
       prevDatesRef.current.to !== toDate;
@@ -131,12 +133,20 @@ const DependencyWidget: React.FC = () => {
     records.forEach((record) => {
       record.sites.forEach((site) => {
         if (!site.chartLoading && (!site.chartResult || datesChanged)) {
-          fetchChartData(token, site, fromDate, toDate);
+          fetchChartData(
+            token,
+            site,
+            fromDate,
+            toDate,
+            undefined,
+          );
         }
       });
     });
 
     prevDatesRef.current = { from: fromDate, to: toDate };
+
+    return () => controller.abort();
   }, [token, fromDate, toDate, sitesFingerprint, records]);
 
   const allPotentialSeries = useMemo(() => {

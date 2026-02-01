@@ -9,12 +9,21 @@ import {
   TablePagination,
   LinearProgress,
   Box,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  SelectChangeEvent,
 } from "@mui/material";
-import useAnalyticStore from "./model/useAnalyticStore";
-import { AnalyticSite, useAnalyticSites } from "./model/useAnalyticSites";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/shared/model/auth";
+import { ApiResponse } from "@/types";
+import { api } from "@/shared/model/api/instance";
+import DataSource from "@/entities/source/types/sources";
+import Variable from "@/entities/variable/types/variable";
 import { fetchAnalyticData } from "./model/fetchCategory";
+import { AnalyticSite, useAnalyticSites } from "./model/useAnalyticSites";
+import useAnalyticStore from "./model/useAnalyticStore";
 
 type TableProps = {
   selectedSite: AnalyticSite;
@@ -37,18 +46,67 @@ function AnalyticTable({ selectedSite }: TableProps) {
 
   const { disabledVariables } = useAnalyticStore();
 
+  const [availableSources, setAvailableSources] = useState<DataSource[]>([]);
+  const [selectedSource, setSelectedSource] = useState<DataSource | null>(null);
+
   const isDisabled = (varId: number) => {
     const key = `${selectedSite.category.id}-${selectedSite.id}`;
     return disabledVariables[key]?.includes(varId);
   };
 
   useEffect(() => {
+    if (!token) return;
+
+    const fetchSources = async () => {
+      try {
+        const params: Record<string, string | number> = {
+          siteCode: selectedSite.code,
+        };
+        const { data } = await api.get<
+          ApiResponse<{ variables: Variable[]; sources: DataSource[] }>
+        >(`/data/category/${selectedSite.category.id}/variables`, {
+          headers: { Authorization: `Bearer ${token}` },
+          params,
+        });
+
+        setAvailableSources(data.data.sources);
+
+        if (data.data.sources.length > 0 && !selectedSource) {
+          setSelectedSource(data.data.sources[0]);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    fetchSources();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSite.code, selectedSite.category.id, token]);
+
+  useEffect(() => {
     if (!token || !siteState) return;
 
-    if (loading) return;
+    if (siteState.loading) return;
 
-    fetchAnalyticData(token, siteState, page, rowsPerPage, fromDate, toDate);
-  }, [page, rowsPerPage, fromDate, toDate, token, selectedSite.id]);
+    fetchAnalyticData(
+      token,
+      siteState,
+      page,
+      rowsPerPage,
+      fromDate,
+      toDate,
+      selectedSource?.id,
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    page,
+    rowsPerPage,
+    fromDate,
+    toDate,
+    token,
+    selectedSite.id,
+    selectedSource?.id,
+  ]);
 
   const handleChangePage = (_: unknown, newPage: number) => {
     setSitePage(selectedSite.category.id, selectedSite.id, newPage);
@@ -64,15 +122,22 @@ function AnalyticTable({ selectedSite }: TableProps) {
     );
   };
 
+  const handleSourceChange = (event: SelectChangeEvent<number>) => {
+    const sourceId = Number(event.target.value);
+    const source = availableSources.find((s) => s.id === sourceId) || null;
+    setSelectedSource(source);
+    setSitePage(selectedSite.category.id, selectedSite.id, 0);
+  };
+
   return (
     <Paper
       elevation={0}
-      className="border border-gray-200 rounded-lg! h-96"
+      className="border border-gray-200 rounded-lg! h-[450px]"
       sx={{
         width: "100%",
         position: "relative",
         display: "grid",
-        gridTemplateRows: "1fr auto",
+        gridTemplateRows: "auto 1fr auto",
       }}
     >
       {loading && (
@@ -89,11 +154,29 @@ function AnalyticTable({ selectedSite }: TableProps) {
         />
       )}
 
+      <div className="p-2 border-b border-gray-100 flex justify-end">
+        <FormControl size="small" sx={{ minWidth: 200 }}>
+          <InputLabel>Источник</InputLabel>
+          <Select
+            value={selectedSource?.id ?? ""}
+            label="Источник"
+            onChange={handleSourceChange}
+          >
+            {availableSources.map((source) => (
+              <MenuItem key={source.id} value={source.id}>
+                {source.name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </div>
+
       <Box sx={{ overflowX: "auto", width: "100%", minHeight: 0 }}>
         <TableContainer
           sx={{
             width: "100%",
-            overflow: "visible",
+            height: "100%",
+            overflow: "auto",
             opacity: loading ? 0.5 : 1,
             transition: "opacity 0.2s",
           }}

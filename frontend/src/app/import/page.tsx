@@ -11,6 +11,7 @@ import { fetchPools } from "@/entities/pool/api/fetchPools";
 import { fetchSites } from "@/entities/site/api/fetchSites";
 import { fetchSpatials } from "@/entities/spatial/api/fetchSpatials";
 import { useRouter } from "next/dist/client/components/navigation";
+import HecRasWidget from "@/widgets/import/hec-ras/HecrasWidget";
 
 export default function ImportPage() {
   const { user } = useAuth();
@@ -54,6 +55,7 @@ export default function ImportPage() {
             <Tab label="Табличные данные" />
             <Tab label="Пространственные данные" />
             <Tab label="Бассейны и категории" />
+            <Tab label="Hec-Ras проекты" />
           </Tabs>
         </div>
 
@@ -63,6 +65,7 @@ export default function ImportPage() {
           {currentPage == 0 && <TableWidget />}
           {currentPage == 1 && <SpatialWidget />}
           {currentPage == 2 && <PoolsWidget />}
+          {currentPage == 3 && <HecRasWidget />}
         </div>
       </div>
     </View>
