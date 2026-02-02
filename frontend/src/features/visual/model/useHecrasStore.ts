@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import HecRas from "@/entities/hec-ras/types/hec-ras";
+import Pool from "@/entities/pool/types/pool";
 
 export interface MapMetadata {
   bounds?: [number, number, number, number];
@@ -10,6 +11,7 @@ export interface MapMetadata {
 }
 
 type State = {
+  activePools: Pool[];
   activeHecras: HecRas | null;
   metadata: MapMetadata | null;
   times: string[];
@@ -17,6 +19,7 @@ type State = {
   isPlaying: boolean;
   isMapLoaded: boolean;
 
+  setActivePools: (activePools: Pool[]) => void;
   setActiveHecras: (hecRas: HecRas | null) => void;
   setMetadata: (metadata: MapMetadata | null) => void;
   setTimes: (times: string[]) => void;
@@ -32,6 +35,12 @@ export const useHecrasStore = create<State>((set) => ({
   currentTimeIndex: 0,
   isPlaying: false,
   isMapLoaded: false,
+
+  activePools: [],
+  setActivePools: (activePools: Pool[]) =>
+    set({
+      activePools,
+    }),
 
   setActiveHecras: (hecRas) =>
     set({

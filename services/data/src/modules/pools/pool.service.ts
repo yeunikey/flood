@@ -38,11 +38,13 @@ export class PoolService {
     geojson: FeatureCollection,
     siteIds: number[],
     spatialIds?: number[],
+    hecRasIds?: string[],
   ) {
     const pool = await this.poolRepository.save({
       name,
       description,
       geojson,
+      hecRasIds: hecRasIds || [],
     });
 
     if (siteIds?.length) {
@@ -63,10 +65,12 @@ export class PoolService {
     geojson?: FeatureCollection,
     siteIds?: number[],
     spatialIds?: number[],
+    hecRasIds?: string[],
   ) {
     if (name !== undefined) pool.name = name;
     if (description !== undefined) pool.description = description;
     if (geojson !== undefined) pool.geojson = geojson;
+    if (hecRasIds !== undefined) pool.hecRasIds = hecRasIds;
 
     await this.poolRepository.save(pool);
 

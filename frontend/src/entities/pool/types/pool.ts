@@ -9,6 +9,7 @@ interface Pool {
   geojson: FeatureCollection;
   sites: Site[];
   spatials: Spatial[];
+  hecRasIds: string[];
 }
 
 export default Pool;

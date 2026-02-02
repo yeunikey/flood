@@ -25,11 +25,13 @@ import { usePools } from "@/entities/pool/model/usePools";
 import { ApiResponse } from "@/types";
 import Pool from "@/entities/pool/types/pool";
 import { useSpatial } from "@/entities/spatial/model/useSpatial";
+import { useHecRas } from "@/entities/hec-ras/model/useHecRas";
 
 function CreatePoolModal() {
   const { token } = useAuth();
   const { sites } = useSites();
   const { spatials } = useSpatial();
+  const { hecRas } = useHecRas();
   const { pools, setPools } = usePools();
   const { createPoolModal, setCreatePoolModal } = usePoolStore();
   const [loading, setLoading] = useState(false);
@@ -48,12 +50,18 @@ function CreatePoolModal() {
       spatial.spatial.name.toLowerCase().includes(search.toLowerCase()),
     ) || [];
 
+  const filteredHecRas =
+    hecRas?.filter((hecRasItem) =>
+      hecRasItem.name.toLowerCase().includes(search.toLowerCase()),
+    ) || [];
+
   const [map, setMap] = useState<Map | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("Бассейн");
   const [geojson, setGeojson] = useState<FeatureCollection | null>(null);
   const [selectedSites, setSelectedSites] = useState<number[]>([]);
   const [selectedSpatials, setSelectedSpatials] = useState<number[]>([]);
+  const [selectedHecRas, setSelectedHecRas] = useState<string[]>([]);
 
   const handleGeoJsonUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -83,6 +91,12 @@ function CreatePoolModal() {
     );
   };
 
+  const toggleHecRas = (id: string) => {
+    setSelectedHecRas((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
+    );
+  };
+
   const handleSubmit = async () => {
     setLoading(true);
     const payload = {
@@ -91,6 +105,7 @@ function CreatePoolModal() {
       geojson,
       siteIds: selectedSites,
       spatialIds: selectedSpatials,
+      hecRasIds: selectedHecRas,
     };
 
     try {
@@ -105,7 +120,7 @@ function CreatePoolModal() {
       );
       const resData = res.data;
 
-      const newPools = [...pools]; 
+      const newPools = [...pools];
       newPools.push(resData.data);
       setPools(newPools);
 
@@ -114,6 +129,7 @@ function CreatePoolModal() {
 
       setSelectedSites([]);
       setSelectedSpatials([]);
+      setSelectedHecRas([]);
       setName("");
       setGeojson(null);
       setDescription("Бассейн");
@@ -297,6 +313,7 @@ function CreatePoolModal() {
               >
                 <Tab label="Точки" />
                 <Tab label="Пространственные данные" />
+                <Tab label="HEC-RAS проекты" />
               </Tabs>
             </Box>
             <TextField
@@ -346,6 +363,28 @@ function CreatePoolModal() {
                   </label>
                 ))}
                 {filteredSpatials.length === 0 && (
+                  <Typography variant="caption" color="text.secondary">
+                    Ничего не найдено
+                  </Typography>
+                )}
+              </>
+            )}
+
+            {value === 2 && (
+              <>
+                {filteredHecRas.map((hecRasItem) => (
+                  <label
+                    key={hecRasItem.id}
+                    className="flex items-center cursor-pointer"
+                  >
+                    <Checkbox
+                      checked={selectedHecRas.includes(hecRasItem.id)}
+                      onChange={() => toggleHecRas(hecRasItem.id)}
+                    />
+                    <span>{hecRasItem.name}</span>
+                  </label>
+                ))}
+                {filteredHecRas.length === 0 && (
                   <Typography variant="caption" color="text.secondary">
                     Ничего не найдено
                   </Typography>

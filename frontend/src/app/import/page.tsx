@@ -12,6 +12,7 @@ import { fetchSites } from "@/entities/site/api/fetchSites";
 import { fetchSpatials } from "@/entities/spatial/api/fetchSpatials";
 import { useRouter } from "next/dist/client/components/navigation";
 import HecRasWidget from "@/widgets/import/hec-ras/HecrasWidget";
+import { fetchHecRas } from "@/entities/hec-ras/api/fetchHecRas";
 
 export default function ImportPage() {
   const { user } = useAuth();
@@ -39,6 +40,7 @@ export default function ImportPage() {
     fetchSites(token);
     fetchPools(token);
     fetchSpatials(token);
+    fetchHecRas(token);
   }, [token]);
 
   console.log(user?.role);

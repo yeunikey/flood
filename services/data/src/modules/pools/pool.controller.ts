@@ -23,6 +23,7 @@ export class PoolController {
       body.geojson,
       body.siteIds,
       body.spatialIds,
+      body.hecRasIds,
     );
 
     return {
@@ -49,6 +50,7 @@ export class PoolController {
       body.geojson,
       body.siteIds,
       body.spatialIds,
+      body.hecRasIds,
     );
 
     return {

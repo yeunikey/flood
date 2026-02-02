@@ -20,6 +20,9 @@ export class Pool {
   })
   geojson: FeatureCollection;
 
+  @Column('text', { array: true, nullable: true, default: [] })
+  hecRasIds: string[];
+
   @OneToMany(() => Site, (site) => site.pool)
   sites: Site[];
 

@@ -3,6 +3,7 @@ import {
   IsString,
   IsArray,
   IsNumber,
+  IsUUID,
 } from '@nestjs/class-validator';
 import type { FeatureCollection } from 'geojson';
 
@@ -27,4 +28,9 @@ export class PoolUpdateDto {
   @IsArray()
   @IsNumber({}, { each: true })
   spatialIds?: number[];
+
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  hecRasIds?: string[];
 }

@@ -8,7 +8,7 @@ services:
       - POSTGRES_PASSWORD=Astana2026!Bigdata
       - POSTGRES_DB=flood
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
 

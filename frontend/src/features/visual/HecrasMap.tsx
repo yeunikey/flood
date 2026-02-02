@@ -7,7 +7,6 @@ import { useHecrasStore } from "./model/useHecrasStore";
 import { baseUrl } from "@/shared/model/api/instance";
 import MapboxMap from "@/shared/ui/MapboxMap";
 
-// Устанавливаем токен, как в эталонном коде
 mapboxgl.accessToken =
   "pk.eyJ1IjoieWV1bmlrZXkiLCJhIjoiY205cjdpbTV5MWxyazJpc2FiMWZ3NnVjaSJ9.Fm89p6MOyo_GqvT4uEXpeQ";
 

@@ -23,11 +23,13 @@ import { toast } from "react-toastify";
 import Loading from "@/shared/ui/el/Loading";
 import { usePools } from "@/entities/pool/model/usePools";
 import { useSpatial } from "@/entities/spatial/model/useSpatial";
+import { useHecRas } from "@/entities/hec-ras/model/useHecRas";
 
 function UpdatePoolModal() {
   const { token } = useAuth();
   const { sites } = useSites();
-  const { spatials } = useSpatial(); // Используем Spatials
+  const { spatials } = useSpatial();
+  const { hecRas } = useHecRas();
   const { pools, setPools } = usePools();
   const { updatePoolModal, setUpdatePoolModal, editingPool } = usePoolStore();
   const [loading, setLoading] = useState(false);
@@ -46,12 +48,18 @@ function UpdatePoolModal() {
       spatial.spatial.name.toLowerCase().includes(search.toLowerCase()),
     ) || [];
 
+  const filteredHecRas =
+    hecRas?.filter((hecRasItem) =>
+      hecRasItem.name.toLowerCase().includes(search.toLowerCase()),
+    ) || [];
+
   const [map, setMap] = useState<Map | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("Бассейн");
   const [geojson, setGeojson] = useState<FeatureCollection | null>(null);
   const [selectedSites, setSelectedSites] = useState<number[]>([]);
   const [selectedSpatials, setSelectedSpatials] = useState<number[]>([]);
+  const [selectedHecRas, setSelectedHecRas] = useState<string[]>([]);
 
   const handleGeoJsonUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -81,6 +89,12 @@ function UpdatePoolModal() {
     );
   };
 
+  const toggleHecRas = (id: string) => {
+    setSelectedHecRas((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
+    );
+  };
+
   useEffect(() => {
     if (!updatePoolModal || !editingPool) return;
 
@@ -89,6 +103,7 @@ function UpdatePoolModal() {
     setDescription(editingPool.description || "Бассейн");
     setSelectedSites(editingPool.sites?.map((s) => s.id) || []);
     setSelectedSpatials(editingPool.spatials?.map((s) => s.id) ?? []);
+    setSelectedHecRas(editingPool.hecRasIds || []);
   }, [updatePoolModal, editingPool]);
 
   const handleDelete = async () => {
@@ -112,6 +127,7 @@ function UpdatePoolModal() {
 
       setSelectedSites([]);
       setSelectedSpatials([]);
+      setSelectedHecRas([]);
       setName("");
       setGeojson(null);
       setDescription("Бассейн");
@@ -139,6 +155,7 @@ function UpdatePoolModal() {
           geojson,
           siteIds: selectedSites,
           spatialIds: selectedSpatials,
+          hecRasIds: selectedHecRas,
         },
         {
           headers: {
@@ -152,6 +169,7 @@ function UpdatePoolModal() {
 
       setSelectedSites([]);
       setSelectedSpatials([]);
+      setSelectedHecRas([]);
       setName("");
       setGeojson(null);
       setDescription("Бассейн");
@@ -340,6 +358,7 @@ function UpdatePoolModal() {
               >
                 <Tab label="Точки" />
                 <Tab label="Пространственные данные" />
+                <Tab label="HEC-RAS проекты" />
               </Tabs>
             </Box>
             <TextField
@@ -381,6 +400,23 @@ function UpdatePoolModal() {
                       onChange={() => toggleSpatial(spatial.spatial.id)}
                     />
                     <span>{spatial.spatial.name}</span>
+                  </label>
+                ))}
+              </>
+            )}
+
+            {value == 2 && (
+              <>
+                {filteredHecRas.map((hecRas) => (
+                  <label
+                    key={hecRas.id}
+                    className="flex items-center cursor-pointer"
+                  >
+                    <Checkbox
+                      checked={selectedHecRas.includes(hecRas.id)}
+                      onChange={() => toggleHecRas(hecRas.id)}
+                    />
+                    <span>{hecRas.name}</span>
                   </label>
                 ))}
               </>
