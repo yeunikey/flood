@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { create } from "zustand";
 import HecRas from "@/entities/hec-ras/types/hec-ras";
 import Pool from "@/entities/pool/types/pool";
@@ -8,6 +10,7 @@ export interface MapMetadata {
   minzoom?: number;
   maxzoom?: number;
   has_time?: boolean;
+  [key: string]: any;
 }
 
 type State = {

@@ -6,6 +6,7 @@ import { useSettings } from "../settings/model/useSettings";
 import { useHecrasStore } from "./model/useHecrasStore";
 import { baseUrl } from "@/shared/model/api/instance";
 import MapboxMap from "@/shared/ui/MapboxMap";
+import { HecrasLegend } from "./HecrasLegend";
 
 mapboxgl.accessToken =
   "pk.eyJ1IjoieWV1bmlrZXkiLCJhIjoiY205cjdpbTV5MWxyazJpc2FiMWZ3NnVjaSJ9.Fm89p6MOyo_GqvT4uEXpeQ";
@@ -57,6 +58,7 @@ function HecrasMap() {
 
   return (
     <div className="h-full flex flex-col relative overflow-hidden">
+      <HecrasLegend />
       <MapboxMap
         className="flex-1"
         setMap={setMap}

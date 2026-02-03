@@ -20,7 +20,6 @@ function HecrasVisual() {
   const id = activeHecras?.id;
   const initialFitDone = useRef(false);
 
-  // 1. Загрузка метаданных и времени
   useEffect(() => {
     if (!activeHecras?.id) return;
 
@@ -28,17 +27,19 @@ function HecrasVisual() {
     setMetadata(null);
     setTimes([]);
 
-    // Исправил пути API, чтобы совпадали с NestJS контроллером (hec-ras/map/...)
-    api.get(`hec-ras/map/metadata/${activeHecras.id}`).then((res) => {
-      setMetadata(res.data);
-    });
+    api
+      .get(`${baseUrl}/tiles/hec-ras/map/metadata/${activeHecras.id}`)
+      .then((res) => {
+        setMetadata(res.data);
+      });
 
-    api.get(`hec-ras/map/times/${activeHecras.id}`).then((res) => {
-      setTimes(res.data.times || []);
-    });
+    api
+      .get(`${baseUrl}/tiles/hec-ras/map/times/${activeHecras.id}`)
+      .then((res) => {
+        setTimes(res.data.times || []);
+      });
   }, [activeHecras?.id, setMetadata, setTimes]);
 
-  // 2. Установка границ карты (Fit Bounds)
   useEffect(() => {
     if (!map || !metadata || initialFitDone.current) return;
 
@@ -63,71 +64,117 @@ function HecrasVisual() {
     }
   }, [map, metadata]);
 
-  // 3. Основная логика отрисовки (Перенесено из HecRasViewer: ОДИН слой, обновление по времени)
   useEffect(() => {
     const m = map;
     if (!m || !id || !isMapLoaded || !metadata) return;
-
-    // Ждем загрузки стиля, иначе addSource упадет
     if (!m.isStyleLoaded()) return;
 
-    const sourceId = "hec-ras-source";
-    const layerId = "hec-ras-layer";
     const currentTime = times[currentTimeIndex];
 
-    // Формируем URL
-    let tileUrl = `${baseUrl}/tile/${id}/{z}/{x}/{y}.png`;
+    const layerId = `hec-ras-layer-${id}-${currentTimeIndex}`;
+    const sourceId = `hec-ras-source-${id}-${currentTimeIndex}`;
 
-    // Добавляем время только если оно есть и поддерживается
+    let tileUrl = `${baseUrl}/tiles/hec-ras/map/tiles/${id}/{z}/{x}/{y}.png`;
+
     if (metadata.has_time && currentTime) {
       tileUrl += `?time=${encodeURIComponent(currentTime)}`;
     }
 
-    // Удаляем старый слой и источник, чтобы обновить тайлы
-    // Mapbox эффективно кэширует, но для смены URL тайлов проще всего пересоздать source
-    if (m.getLayer(layerId)) {
-      m.removeLayer(layerId);
-    }
-    if (m.getSource(sourceId)) {
-      m.removeSource(sourceId);
+    if (m.getLayer(layerId)) return;
+
+    if (!m.getSource(sourceId)) {
+      m.addSource(sourceId, {
+        type: "raster",
+        tiles: [tileUrl],
+        tileSize: 256,
+        bounds: metadata.bounds as [number, number, number, number],
+        minzoom: metadata.minzoom,
+        maxzoom: metadata.maxzoom,
+      });
     }
 
-    // Добавляем источник с новым URL
-    m.addSource(sourceId, {
-      type: "raster",
-      tiles: [tileUrl],
-      tileSize: 256,
-      bounds: metadata.bounds,
-      minzoom: metadata.minzoom,
-      maxzoom: metadata.maxzoom,
-    });
-
-    // Находим слой, под который нужно положить растр (обычно под метки/текст)
     const layers = m.getStyle().layers;
     const firstSymbolId = layers?.find((layer) => layer.type === "symbol")?.id;
 
-    // Добавляем слой
-    m.addLayer(
-      {
-        id: layerId,
-        type: "raster",
-        source: sourceId,
-        paint: { "raster-opacity": 0.8 },
-      },
-      firstSymbolId,
-    );
-  }, [map, id, isMapLoaded, metadata, times, currentTimeIndex]); // Зависимость от currentTimeIndex вызывает обновление слоя
+    if (!m.getLayer(layerId)) {
+      m.addLayer(
+        {
+          id: layerId,
+          type: "raster",
+          source: sourceId,
+          paint: {
+            "raster-opacity": 0,
+            "raster-opacity-transition": { duration: 500 },
+            "raster-fade-duration": 0,
+          },
+        },
+        firstSymbolId,
+      );
 
-  // 4. Анимация
+      requestAnimationFrame(() => {
+        if (m.getLayer(layerId)) {
+          m.setPaintProperty(layerId, "raster-opacity", 0.8);
+        }
+      });
+    }
+
+    const timeoutId = setTimeout(() => {
+      if (!m || !m.getStyle()) return;
+
+      const currentStyle = m.getStyle();
+      if (!currentStyle || !currentStyle.layers) return;
+
+      currentStyle.layers.forEach((layer) => {
+        if (
+          layer.id.startsWith(`hec-ras-layer-${id}-`) &&
+          layer.id !== layerId
+        ) {
+          if (m.getLayer(layer.id)) m.removeLayer(layer.id);
+
+          const oldSourceId = layer.source;
+          if (
+            oldSourceId !== sourceId &&
+            typeof oldSourceId === "string" &&
+            m.getSource(oldSourceId)
+          ) {
+            m.removeSource(oldSourceId);
+          }
+        }
+      });
+    }, 600);
+
+    return () => clearTimeout(timeoutId);
+  }, [map, id, isMapLoaded, metadata, times, currentTimeIndex]);
+
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (isPlaying && times.length > 0) {
       interval = setInterval(() => {
         setCurrentTimeIndex((prev) => (prev + 1) % times.length);
-      }, 800); // Чуть увеличил интервал (800мс), чтобы тайлы успевали грузиться
+      }, 200);
     }
     return () => clearInterval(interval);
   }, [isPlaying, times, setCurrentTimeIndex]);
+
+  useEffect(() => {
+    return () => {
+      if (!map || !map.getStyle()) return;
+      const style = map.getStyle();
+      if (style && style.layers) {
+        style.layers.forEach((layer) => {
+          if (layer.id.startsWith("hec-ras-layer-")) {
+            map.removeLayer(layer.id);
+            if (
+              typeof layer.source === "string" &&
+              map.getSource(layer.source)
+            ) {
+              map.removeSource(layer.source);
+            }
+          }
+        });
+      }
+    };
+  }, [map, id]);
 
   return null;
 }

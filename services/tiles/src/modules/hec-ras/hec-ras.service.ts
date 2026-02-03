@@ -11,7 +11,6 @@ import { DatabaseSync } from 'node:sqlite';
 import { join } from 'path';
 import { existsSync, mkdirSync, renameSync, unlinkSync } from 'fs';
 import { HecRas } from './entity/hec-ras.entity';
-import * as zlib from 'zlib';
 
 interface TileRange {
   min_x: number | null;
@@ -261,7 +260,7 @@ export class HecRasService implements OnModuleInit, OnModuleDestroy {
       const stmt = db.prepare(
         `SELECT DISTINCT time FROM "${tileTableName}" ORDER BY time ASC`,
       );
-      const rows = stmt.all() as TimeRow[];
+      const rows = stmt.all() as unknown as TimeRow[];
       return { times: rows.map((r) => r.time) };
     } catch (e) {
       return { times: [] };
