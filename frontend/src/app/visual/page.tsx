@@ -1,9 +1,9 @@
 "use client";
 
 import { fetchHecRas } from "@/entities/hec-ras/api/fetchHecRas";
+import { fetchPools } from "@/entities/pool/api/fetchPools";
 import { useAuth } from "@/shared/model/auth";
 import View from "@/shared/ui/View";
-import ViewWidget from "@/widgets/spatial/ViewWidget";
 import HecRasWidget from "@/widgets/visual/HecRasWidget";
 import { Divider, Tab, Tabs } from "@mui/material";
 import { useEffect, useState } from "react";
@@ -21,6 +21,7 @@ function SpatialPage() {
     if (!token) return;
 
     fetchHecRas(token);
+    fetchPools(token);
   }, [token]);
 
   return (

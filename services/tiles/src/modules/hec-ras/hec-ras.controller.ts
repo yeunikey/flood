@@ -10,7 +10,7 @@ import {
   Res,
   ParseIntPipe,
   Delete,
-  Header,
+  ParseBoolPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { HecRasService } from './hec-ras.service';
@@ -65,35 +65,36 @@ export class HecRasController {
   }
 
   @Get('map/tiles/:id/:z/:x/:y.png')
-  @Header('Content-Type', 'image/png')
-  @Header('Cache-Control', 'public, max-age=31536000')
   getTile(
     @Param('id') id: string,
     @Param('z', ParseIntPipe) z: number,
     @Param('x', ParseIntPipe) x: number,
     @Param('y') yStr: string,
     @Query('time') time: string,
+    @Query('tms') tms: string, // Получаем как строку, т.к. Query boolean иногда глючит без Pipe
     @Res() res: Response,
   ) {
-    const y = parseInt(yStr.replace('.png', ''));
+    const y = parseInt(yStr.replace('.png', ''), 10);
+    const useTms = tms === 'true' || tms === '1';
 
     try {
-      const tile = this.service.getTile(id, z, x, y, time);
+      const tile = this.service.getTile(id, z, x, y, time, useTms);
 
       if (!tile) {
-        // Возвращаем прозрачный пиксель 1x1, чтобы браузер не ругался на 404 в консоли
-        const transparentPixel = Buffer.from(
-          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
-          'base64',
-        );
-        res.send(transparentPixel);
+        res.setHeader('Content-Type', 'image/png');
+        res.setHeader('Cache-Control', 'public, max-age=3600'); // Кэшируем пустоту на час
+        res.send(this.service.getTransparentTile());
         return;
       }
 
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Cache-Control', 'public, max-age=31536000');
       res.send(tile);
     } catch (e) {
       console.error(e);
-      res.status(404).send('Tile not found');
+      // Возвращаем прозрачный тайл вместо 500 ошибки, чтобы карта не мигала "битыми" картинками
+      res.setHeader('Content-Type', 'image/png');
+      res.send(this.service.getTransparentTile());
     }
   }
 }
