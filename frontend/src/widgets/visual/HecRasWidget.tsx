@@ -1,7 +1,7 @@
-import HecrasItems from "@/features/visual/HecrasItems";
-import HecrasMap from "@/features/visual/HecrasMap";
-import HecrasPlayer from "@/features/visual/HecrasPlayer";
-import HecrasVisual from "@/features/visual/map/HecrasVisual";
+import HecrasItems from "@/features/visual/hecras/HecrasItems";
+import HecrasMap from "@/features/visual/hecras/HecrasMap";
+import HecrasPlayer from "@/features/visual/hecras/HecrasPlayer";
+import HecrasVisual from "@/features/visual/hecras/map/HecrasVisual";
 import { Divider, Grid } from "@mui/material";
 
 function HecRasWidget() {

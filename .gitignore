@@ -1,3 +1,4 @@
 .env.dev
 .env.prod
 uploads/
+backup.sql

@@ -1,10 +1,10 @@
-import { Fragment } from "react";
 import { List, Divider } from "@mui/material";
 
 import { usePools } from "@/entities/pool/model/usePools";
 import PoolGroup from "./PoolGroup";
 import Pool from "@/entities/pool/types/pool";
 import { useSpatial } from "@/entities/spatial/model/useSpatial";
+import { useSpatialTiles } from "@/features/spatial/model/useSpatialTiles";
 
 function SpatialItems() {
   const { pools } = usePools();
@@ -30,6 +30,7 @@ function SpatialItems() {
               description: "",
               spatials: [],
               sites: [],
+              hecRasIds: [],
               geojson: { type: "FeatureCollection", features: [] },
             },
           ];

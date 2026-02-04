@@ -31,6 +31,7 @@ function SpatialItems() {
               description: "",
               spatials: [],
               sites: [],
+              hecRasIds: [],
               geojson: { type: "FeatureCollection", features: [] },
             },
           ];
