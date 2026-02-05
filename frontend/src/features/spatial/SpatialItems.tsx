@@ -1,4 +1,3 @@
-import { Fragment } from "react";
 import { List, Divider } from "@mui/material";
 
 import { usePools } from "@/entities/pool/model/usePools";

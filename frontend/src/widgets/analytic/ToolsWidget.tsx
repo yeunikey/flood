@@ -171,7 +171,7 @@ function ToolsWidget() {
                 <ToggleButton value="chart" className="px-6!">
                   График
                 </ToggleButton>
-              </ToggleButtonGroup>{" "}
+              </ToggleButtonGroup>
             </div>
           )}
         </div>

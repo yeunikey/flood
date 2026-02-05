@@ -1,110 +1,62 @@
+import { useState } from "react";
 import { ShowChart } from "@mui/icons-material";
 import {
   Button,
   Divider,
+  Typography,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
   ToggleButton,
   ToggleButtonGroup,
-  Typography,
+  Box,
 } from "@mui/material";
+import { SelectChangeEvent } from "@mui/material/Select";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-import TuneIcon from "@mui/icons-material/Tune";
-import useAnalyticStore from "@/features/analytic/model/useAnalyticStore";
-import { useAuth } from "@/shared/model/auth";
-import { fetchAnalyticData } from "@/features/analytic/model/fetchCategory";
-import { useAnalyticSites } from "@/features/analytic/model/useAnalyticSites";
+
+type DateMode = "single" | "range";
 
 function ToolsWidget() {
-  const { token } = useAuth();
-  const {
-    variableCollapse,
-    fromDate,
-    toDate,
-    viewMode,
-    showDependencies,
-    globalMinDate,
-    globalMaxDate,
-    setVariableCollapse,
-    setFromDate,
-    setToDate,
-    setViewMode,
-    setShowDependencies,
-  } = useAnalyticStore();
+  const [variable, setVariable] = useState<string>("");
+  const [dateMode, setDateMode] = useState<DateMode>("single");
+  const [singleDate, setSingleDate] = useState<Date | null>(null);
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
 
-  const { activeSites, setSiteRowsPerPage, setSitePage } = useAnalyticSites();
+  const handleVariableChange = (event: SelectChangeEvent) => {
+    setVariable(event.target.value);
+  };
 
-  const handleDateChange = (
-    newFromDate: Date | null,
-    newToDate: Date | null,
+  const handleModeChange = (
+    _event: React.MouseEvent<HTMLElement>,
+    newMode: DateMode | null,
   ) => {
-    if (!token) return;
-
-    if (newFromDate && newToDate) {
-      if (newFromDate > newToDate) return;
-
-      const tenYearsMs = 10 * 365.25 * 24 * 60 * 60 * 1000;
-      if (newToDate.getTime() - newFromDate.getTime() > tenYearsMs) {
-        return;
-      }
+    if (newMode !== null) {
+      setDateMode(newMode);
     }
-
-    Object.values(activeSites).forEach((record) => {
-      record.sites.forEach((site) => {
-        fetchAnalyticData(token, site, 0, 10, newFromDate, newToDate);
-        setSiteRowsPerPage(record.category.id, site.id, 10);
-        setSitePage(record.category.id, site.id, 0);
-      });
-    });
-  };
-
-  const safeDate = (d: Date | string | null | undefined): Date | undefined => {
-    if (!d) return undefined;
-    const date = new Date(d);
-    return isNaN(date.getTime()) ? undefined : date;
-  };
-
-  const getMinFromDate = () => {
-    let min = safeDate(globalMinDate);
-    const currentTo = safeDate(toDate);
-
-    if (currentTo) {
-      const limitDate = new Date(currentTo);
-      limitDate.setFullYear(limitDate.getFullYear() - 10);
-
-      if (!min || limitDate > min) {
-        min = limitDate;
-      }
-    }
-    return min;
-  };
-
-  const getMaxToDate = () => {
-    let max = safeDate(globalMaxDate);
-    const currentFrom = safeDate(fromDate);
-
-    if (currentFrom) {
-      const limitDate = new Date(currentFrom);
-      limitDate.setFullYear(limitDate.getFullYear() + 10);
-
-      if (!max || limitDate < max) {
-        max = limitDate;
-      }
-    }
-    return max;
   };
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
       <div className="flex flex-wrap items-center justify-between gap-4 p-3">
         <div className="flex flex-wrap items-center gap-6">
-          <Button
-            variant="outlined"
-            startIcon={<TuneIcon />}
-            onClick={() => setVariableCollapse(!variableCollapse)}
-          >
-            Переменные
-          </Button>
+          <FormControl size="small" sx={{ minWidth: 150 }}>
+            <InputLabel id="variable-select-label">Переменная</InputLabel>
+            <Select
+              labelId="variable-select-label"
+              value={variable}
+              label="Переменная"
+              onChange={handleVariableChange}
+              className="w-48"
+            >
+              <MenuItem value="var1">Переменная 1</MenuItem>
+              <MenuItem value="var2">Переменная 2</MenuItem>
+              <MenuItem value="var3">Переменная 3</MenuItem>
+            </Select>
+          </FormControl>
 
           <Divider
             orientation="vertical"
@@ -112,48 +64,50 @@ function ToolsWidget() {
             className="hidden md:block"
           />
 
-          <div className="flex flex-wrap items-center gap-6">
-            <div className="flex items-center gap-3">
-              <Typography color="textSecondary" variant="body2">
-                от
-              </Typography>
-              <DatePicker
-                label="дд.мм.гггг"
-                value={safeDate(fromDate) || null}
-                minDate={getMinFromDate()}
-                maxDate={
-                  !toDate
-                    ? safeDate(globalMaxDate) || undefined
-                    : safeDate(toDate) || undefined
-                }
-                onChange={(newValue: Date | null) => {
-                  setFromDate(newValue);
-                  handleDateChange(newValue, safeDate(toDate) || null);
-                }}
-                slotProps={{ textField: { size: "small" } }}
-              />
-            </div>
+          <div className="flex flex-wrap items-center gap-4">
+            <ToggleButtonGroup
+              color="primary"
+              value={dateMode}
+              exclusive
+              onChange={handleModeChange}
+              size="small"
+            >
+              <ToggleButton value="single" className="px-4!">
+                День
+              </ToggleButton>
+              <ToggleButton value="range" className="px-4!">
+                Период
+              </ToggleButton>
+            </ToggleButtonGroup>
 
-            {/* <div className="flex items-center gap-3">
-              <Typography color="textSecondary" variant="body2">
-                до
-              </Typography>
+            {dateMode === "single" ? (
               <DatePicker
-                label="дд.мм.гггг"
-                value={safeDate(toDate) || null}
-                minDate={
-                  !fromDate
-                    ? safeDate(globalMinDate) || undefined
-                    : safeDate(fromDate) || undefined
-                }
-                maxDate={getMaxToDate()}
-                onChange={(newValue: Date | null) => {
-                  setToDate(newValue);
-                  handleDateChange(safeDate(fromDate) || null, newValue);
-                }}
-                slotProps={{ textField: { size: "small" } }}
+                label="Дата"
+                value={singleDate}
+                onChange={(newValue) => setSingleDate(newValue)}
+                slotProps={{ textField: { size: "small", sx: { width: 160 } } }}
               />
-            </div> */}
+            ) : (
+              <Box display="flex" alignItems="center" gap={1}>
+                <DatePicker
+                  label="С"
+                  value={startDate}
+                  onChange={(newValue) => setStartDate(newValue)}
+                  slotProps={{
+                    textField: { size: "small", sx: { width: 160 } },
+                  }}
+                />
+                <Typography>-</Typography>
+                <DatePicker
+                  label="По"
+                  value={endDate}
+                  onChange={(newValue) => setEndDate(newValue)}
+                  slotProps={{
+                    textField: { size: "small", sx: { width: 160 } },
+                  }}
+                />
+              </Box>
+            )}
           </div>
         </div>
 
@@ -161,7 +115,6 @@ function ToolsWidget() {
           variant="contained"
           startIcon={<ShowChart />}
           disableElevation
-          onClick={() => setShowDependencies(!showDependencies)}
           sx={{
             bgcolor: "#1976d2",
             fontWeight: 500,

@@ -1,6 +1,7 @@
 import { Box, Divider } from "@mui/material";
 import ToolsWidget from "./prediction/ToolsWidget";
 import PredictionItems from "@/features/visual/prediction/PredictionItems";
+import ForecastWidget from "./prediction/ForecastWidget";
 
 function PredictionWidget() {
   return (
@@ -42,7 +43,7 @@ function PredictionWidget() {
             p: 0,
           }}
         >
-          test
+          <ForecastWidget />
         </Box>
       </Box>
     </Box>
