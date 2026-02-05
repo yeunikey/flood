@@ -1,6 +1,7 @@
 "use client";
 
 import { fetchHecRas } from "@/entities/hec-ras/api/fetchHecRas";
+import { fetchLayers } from "@/entities/layer/api/fetchLayers";
 import { fetchPools } from "@/entities/pool/api/fetchPools";
 import { useAuth } from "@/shared/model/auth";
 import View from "@/shared/ui/View";
@@ -23,6 +24,7 @@ function SpatialPage() {
 
     fetchHecRas(token);
     fetchPools(token);
+    fetchLayers(token);
   }, [token]);
 
   return (

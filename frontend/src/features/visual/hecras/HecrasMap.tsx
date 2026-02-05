@@ -1,11 +1,13 @@
+import "mapbox-gl/dist/mapbox-gl.css";
+
 import { useEffect, useCallback } from "react";
 import mapboxgl from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
 import { useHecrasMap } from "./model/useHecrasMap";
-import { useSettings } from "../../settings/model/useSettings";
 import { useHecrasStore } from "./model/useHecrasStore";
 import { baseUrl } from "@/shared/model/api/instance";
 import MapboxMap from "@/shared/ui/MapboxMap";
+import { HecrasLegend } from "./HecrasLegend";
+import { useSettings } from "@/features/settings/model/useSettings";
 
 mapboxgl.accessToken =
   "pk.eyJ1IjoieWV1bmlrZXkiLCJhIjoiY205cjdpbTV5MWxyazJpc2FiMWZ3NnVjaSJ9.Fm89p6MOyo_GqvT4uEXpeQ";
@@ -57,6 +59,7 @@ function HecrasMap() {
 
   return (
     <div className="h-full flex flex-col relative overflow-hidden">
+      <HecrasLegend />
       <MapboxMap
         className="flex-1"
         setMap={setMap}
