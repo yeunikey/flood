@@ -13,13 +13,15 @@ function PredictionItems() {
   const { activeSite, setActiveSite, activePools, setActivePools } =
     usePredictionSites();
 
+  const [modelsIds, setModelsIds] = useState<string[]>(["11207"]);
+
   const [expanded, setExpanded] = useState<string[]>([]);
   const [activeTooltipId, setActiveTooltipId] = useState<string | null>(null);
 
   const toggleExpand = (id: string) => {
     if (id.startsWith("pool-")) {
       const poolId = Number(id.replace("pool-", ""));
-      const pool = pools.find((p) => p.id === poolId);
+      const pool = pools?.find((p) => p.id === poolId);
 
       if (pool) {
         const isPoolActive = activePools.some((p) => p.id === poolId);
@@ -48,15 +50,27 @@ function PredictionItems() {
     }
   };
 
-  const allPoolSiteIds = pools.flatMap((p) => p.sites.map((s) => s.id));
-  const standaloneSites = layers
+  // Безопасный доступ к pools (на случай undefined при загрузке)
+  const allPoolSiteIds = pools?.flatMap((p) => p.sites.map((s) => s.code)) || [];
+
+  const standaloneSites = (layers || [])
     .map((layer) => ({
       ...layer,
-      sites: layer.sites.filter((site) => !allPoolSiteIds.includes(site.id)),
+      sites: layer.sites.filter(
+        (site) =>
+          !allPoolSiteIds.includes(site.code) &&
+          (modelsIds.length === 0 || modelsIds.includes(site.code)), // Показываем все, если modelsIds пуст
+      ),
     }))
     .filter((l) => l.sites.length > 0);
 
-  const validPools = pools
+  const validPools = (pools || [])
+    .map((pool) => ({
+      ...pool,
+      sites: pool.sites.filter(
+        (site) => modelsIds.length === 0 || modelsIds.includes(site.code), // Показываем все, если modelsIds пуст
+      ),
+    }))
     .filter((p) => p.sites.length > 0)
     .sort((a, b) => (a.description || "").localeCompare(b.description || ""));
 
@@ -82,7 +96,7 @@ function PredictionItems() {
               <PoolGroup
                 key={pool.id}
                 pool={pool}
-                layers={layers}
+                layers={layers || []}
                 isExpanded={activePools.some((p) => p.id === pool.id)}
                 onToggleExpand={toggleExpand}
                 expandedList={expanded}
@@ -102,7 +116,7 @@ function PredictionItems() {
               <PoolGroup
                 key={pool.id}
                 pool={pool}
-                layers={layers}
+                layers={layers || []}
                 isExpanded={activePools.some((p) => p.id === pool.id)}
                 onToggleExpand={toggleExpand}
                 expandedList={expanded}
