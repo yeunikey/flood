@@ -24,6 +24,7 @@ import useAnalyticStore from "@/features/analytic/model/useAnalyticStore";
 import { useAuth } from "@/shared/model/auth";
 import DataSource from "@/entities/source/types/sources";
 import { ApiResponse } from "@/types";
+import WrongLocationIcon from "@mui/icons-material/WrongLocation";
 
 type SiteRowProps = {
   site: AnalyticSite;
@@ -175,6 +176,20 @@ function TablesWidget() {
       console.error("Export failed", error);
     }
   };
+
+  if (Object.entries(activeSites).length == 0) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <div className="flex flex-col items-center gap-2 text-center text-gray-500">
+          <WrongLocationIcon sx={{ fontSize: 48, mb: 1 }} />
+          <p className="text-lg font-medium text-slate-900">
+            Вы не выбрали точки
+          </p>
+          <p className="text-sm">Выберите точки из списка, чтобы отобразить данные</p>
+        </div>
+      </div>
+    );
+  }
 
   if (categories.length === 0) return null;
 

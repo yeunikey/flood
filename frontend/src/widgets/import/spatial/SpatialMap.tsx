@@ -4,7 +4,6 @@ import { useSpatialMap } from "../../../features/spatial/model/useSpatialMap";
 import SpatialGeoJson from "../../../features/spatial/map/SpatialGeoJson";
 import { TileSlider } from "../../../features/spatial/TileSlider";
 import MapboxMap from "@/shared/ui/MapboxMap";
-import SpatialURL from "../../../features/spatial/SpatialURL";
 import SpatialTools from "@/features/spatial/SpatialTools";
 
 function SpatialMap() {
@@ -24,7 +23,6 @@ function SpatialMap() {
       <SpatialTools />
       <TileSlider />
 
-      <SpatialURL />
       <MapboxMap className="flex-1" setMap={setMap} />
     </div>
   );

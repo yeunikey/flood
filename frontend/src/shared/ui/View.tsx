@@ -11,7 +11,7 @@ import {
   Autocomplete,
   TextField,
 } from "@mui/material";
-
+import BrowserUpdatedIcon from "@mui/icons-material/BrowserUpdated";
 import Box from "@mui/material/Box";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
@@ -45,6 +45,8 @@ import { useMonitorStore } from "@/features/monitor/model/useMontorStore";
 import Site from "@/entities/site/types/site";
 import Pool from "@/entities/pool/types/pool";
 import { Category } from "@/entities/category/types/categories";
+import { useMonitorSites } from "@/features/monitor/model/useMonitorSites";
+import { useMonitorMap } from "@/features/monitor/model/useMonitorMap";
 
 interface ViewProps {
   children?: React.ReactNode;
@@ -62,12 +64,14 @@ function View({ children, links, className }: ViewProps) {
   const theme = useTheme();
   const router = useRouter();
   const { user } = useAuth();
+  const { activeSites, setActiveSites } = useMonitorSites();
 
   const [open, setOpen] = React.useState(false);
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const { setOpenSettings } = useSettings();
   const { query, setQuery } = useSearch();
   const { setSelectedCategory, setSelectedSite } = useMonitorStore();
+  const { map } = useMonitorMap();
 
   const { pools } = usePools();
   const { layers } = useLayers();
@@ -163,6 +167,20 @@ function View({ children, links, className }: ViewProps) {
                     router.push(`/`);
                     setSelectedCategory(value.category);
                     setSelectedSite(value.site);
+
+                    setTimeout(() => {
+                      if (!activeSites.some((s) => s.id === value.site.id)) {
+                        setActiveSites([...activeSites, value.site]);
+                      }
+
+                      if (map && value.site.longtitude && value.site.latitude) {
+                        map.flyTo({
+                          center: [value.site.longtitude, value.site.latitude],
+                          zoom: 14,
+                          essential: true,
+                        });
+                      }
+                    }, 1000);
                   }
                 }}
                 getOptionLabel={(option) =>
@@ -209,6 +227,16 @@ function View({ children, links, className }: ViewProps) {
             </Paper>
 
             <div className="flex gap-6">
+              <IconButton
+                size="small"
+                href="https://drive.google.com/file/d/14HsJpl1Eg2G-vDpRjXnf-GNKqCiDhDNs/view?usp=drive_link"
+                target="_blank"
+              >
+                <BrowserUpdatedIcon
+                  color="inherit"
+                  className="text-neutral-200"
+                />
+              </IconButton>
               <IconButton size="small" onClick={() => setOpenSettings(true)}>
                 <SettingsIcon color="inherit" className="text-neutral-200" />
               </IconButton>

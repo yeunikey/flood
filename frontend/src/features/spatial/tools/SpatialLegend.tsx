@@ -119,7 +119,7 @@ export function MapLegend() {
 
   return (
     <div className="min-w-[220px] max-w-[300px]">
-      <div className="bg-white rounded-e-2xl overflow-hidden font-sans">
+      <div className="bg-white rounded-2xl overflow-hidden font-sans">
         <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
           <h6 className="font-medium text-gray-800">
             {activeSpatial.legend.title || "Легенда"}

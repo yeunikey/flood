@@ -41,11 +41,9 @@ function PoolMarkers() {
             id: layerId,
             type: "fill",
             source: layerId,
-            layout: {},
             paint: {
-              "fill-color": "#007bff",
+              "fill-color": "#497ab3",
               "fill-opacity": 0.4,
-              "fill-outline-color": "#0056b3",
             },
           });
 

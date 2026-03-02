@@ -29,6 +29,7 @@ function HecrasPlayer() {
         gap: 2,
         zIndex: 1000,
       }}
+      className="rounded-2xl"
     >
       <IconButton onClick={() => setIsPlaying(!isPlaying)} color="primary">
         {isPlaying ? <PauseIcon /> : <PlayArrowIcon />}

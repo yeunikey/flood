@@ -189,7 +189,11 @@ function AnalyticTable({ selectedSite, selectedSourceId }: TableProps) {
                           key={variable.id}
                           sx={{ whiteSpace: "nowrap" }}
                         >
-                          {value?.value ?? "-"}
+                          {value?.value !== undefined &&
+                          !isNaN(Number(value.value)) &&
+                          value.value !== ""
+                            ? Number(value.value).toFixed(3)
+                            : (value?.value ?? "-")}
                         </TableCell>
                       );
                     })}

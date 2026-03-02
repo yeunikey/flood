@@ -181,11 +181,7 @@ function ToolsWidget() {
           startIcon={<ShowChart />}
           disableElevation
           onClick={() => setShowDependencies(!showDependencies)}
-          sx={{
-            bgcolor: "#1976d2",
-            fontWeight: 500,
-            "&:hover": { bgcolor: "#1565c0" },
-          }}
+          color="primary"
         >
           {!showDependencies ? "Построить зависимости" : "Обратно"}
         </Button>

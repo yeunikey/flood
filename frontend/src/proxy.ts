@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-export function proxy(request: NextRequest) {
+export function proxy(request: NextRequest): NextResponse {
   const token = request.cookies.get("token")?.value;
   const pathname = request.nextUrl.pathname;
 
@@ -18,6 +18,6 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|logo.svg|logo.png|icons/).*)",
+    "/((?!_next/static|_next/image|favicon.ico|logo.svg|logo.png|icons/|images/).*)",
   ],
 };

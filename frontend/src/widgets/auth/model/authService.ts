@@ -23,7 +23,7 @@ const handleLogin = async () => {
         return;
       }
 
-      Cookies.set("token", response.data.data.token);
+      Cookies.set("token", response.data.data.token, { expires: 30 });
 
       window.location.href = "/";
     });
@@ -48,7 +48,7 @@ const handleCreate = async () => {
         return;
       }
 
-      Cookies.set("token", response.data.data.token);
+      Cookies.set("token", response.data.data.token, { expires: 30 });
 
       window.location.href = "/";
 

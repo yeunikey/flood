@@ -8,6 +8,7 @@ export interface MapMetadata {
   minzoom?: number;
   maxzoom?: number;
   has_time?: boolean;
+  [key: string]: unknown;
 }
 
 type State = {

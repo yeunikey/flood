@@ -6,6 +6,8 @@ import {
   ColorSpecification,
   Popup,
   MapLayerMouseEvent,
+  FillLayer,
+  LineLayer,
 } from "mapbox-gl";
 import { useSpatialSettings } from "../model/useSpatialSettings";
 import { baseUrl } from "@/shared/model/api/instance";
@@ -76,9 +78,7 @@ function SpatialGeoJson() {
         if (map.getLayer(outlineLayerId)) map.removeLayer(outlineLayerId);
         if (map.getLayer(layerId)) map.removeLayer(layerId);
         if (map.getSource(sourceId)) map.removeSource(sourceId);
-      } catch (e) {
-        // silent catch
-      }
+      } catch (e) {}
     };
 
     const sourceLayer = activeTileId.replace(/-/g, "");
@@ -118,21 +118,22 @@ function SpatialGeoJson() {
           ];
         }
       } catch (error) {
-        console.error("Error calculating style expression:", error);
+        console.error(error);
       }
 
       if (!isMounted) return;
 
       try {
-        // Дополнительная проверка на наличие стиля перед добавлением слоев
-        if (!map.getStyle() || !map.isStyleLoaded()) return;
+        if (!map.getStyle()) return;
 
-        const filterExpression = activeSpatial.style.gradient?.variable
-          ? ["has", activeSpatial.style.gradient.variable]
-          : undefined;
+        const filterExpression =
+          activeSpatial.style.type === "gradient" &&
+          activeSpatial.style.gradient?.variable
+            ? ["has", activeSpatial.style.gradient.variable]
+            : undefined;
 
         if (map.getSource(sourceId) && !map.getLayer(layerId)) {
-          map.addLayer({
+          const fillLayer: FillLayer = {
             id: layerId,
             type: "fill",
             source: sourceId,
@@ -142,14 +143,19 @@ function SpatialGeoJson() {
                 fillColorExpression as DataDrivenPropertyValueSpecification<ColorSpecification>,
               "fill-opacity": activeSpatial.style.opacity ?? 0.6,
             },
-            filter: filterExpression,
-          });
+          };
+
+          if (filterExpression) {
+            fillLayer.filter = filterExpression;
+          }
+
+          map.addLayer(fillLayer);
         }
 
         if (map.getSource(sourceId) && !map.getLayer(outlineLayerId)) {
           const borderWidth = activeSpatial.style.borderWidth ?? 1;
 
-          map.addLayer({
+          const lineLayer: LineLayer = {
             id: outlineLayerId,
             type: "line",
             source: sourceId,
@@ -159,11 +165,16 @@ function SpatialGeoJson() {
               "line-width": borderWidth,
               "line-opacity": borderWidth === 0 ? 0 : 1,
             },
-            filter: filterExpression,
-          });
+          };
+
+          if (filterExpression) {
+            lineLayer.filter = filterExpression;
+          }
+
+          map.addLayer(lineLayer);
         }
       } catch (e) {
-        console.error("Error adding layers:", e);
+        console.error(e);
       }
     };
 
@@ -181,16 +192,14 @@ function SpatialGeoJson() {
         if (!map.getSource(sourceId)) {
           map.addSource(sourceId, {
             type: "vector",
-            tiles: [
-              `${baseUrl}/tiles/server/${activeTileId}/{z}/{x}/{y}.pbf`,
-            ],
+            tiles: [`${baseUrl}/tiles/server/${activeTileId}/{z}/{x}/{y}.pbf`],
             minzoom: 0,
             maxzoom: 14,
           });
         }
         initLayer();
       } catch (e) {
-        console.error("Error adding source:", e);
+        console.error(e);
       }
     };
 

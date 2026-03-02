@@ -7,6 +7,7 @@ import Cookies from "js-cookie";
 import Loading from "./el/Loading";
 import { api } from "@/shared/model/api/instance";
 import { useAuth } from "@/shared/model/auth";
+import Theme from "./Theme";
 
 interface AuthProps {
   children?: ReactNode;
@@ -54,12 +55,14 @@ function Authorize({ children }: AuthProps) {
   if (isLoading) {
     return (
       <div className="w-full h-dvh flex items-center justify-center">
-        <Loading></Loading>
+        <Theme>
+          <Loading></Loading>
+        </Theme>
       </div>
     );
   }
 
-  return <>{children}</>;
+  return <Theme>{children}</Theme>;
 }
 
 export default Authorize;

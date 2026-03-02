@@ -3,7 +3,13 @@ import "./globals.css";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Authorize from "@/shared/ui/Authorize";
 import { ToastContainer } from "react-toastify";
-import { roboto } from "@/shared/fonts/roboto";
+import { Golos_Text } from "next/font/google";
+
+const golos = Golos_Text({
+  subsets: ["latin", "cyrillic"],
+  weight: ["400", "500", "600", "700", "800", "900"],
+  variable: "--font-golos",
+});
 
 export const metadata: Metadata = {
   title: "Панель управления Flood Analytics",
@@ -18,7 +24,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${roboto.variable} antialiased`}>
+      <body className={`${golos.variable} antialiased`}>
         <ToastContainer autoClose={5000} hideProgressBar />
 
         <Authorize>{children}</Authorize>

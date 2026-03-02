@@ -12,6 +12,19 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
 
+  info-db:
+    image: postgres:15-alpine
+    container_name: postgres-info-db
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=Astana2026!Bigdata
+      - POSTGRES_DB=info
+    ports:
+      - "5434:5432"
+    volumes:
+      - db_info_data:/var/lib/postgresql/data
+
   frontend:
     container_name: frontend
     build:
@@ -44,6 +57,25 @@ services:
       - auth-service
       - data-service
       - tiles-service
+      - db
+
+  info-service:
+    container_name: info-service
+    build:
+      context: ./services/info
+      target: dev
+    restart: always
+    expose:
+      - "3000"
+    volumes:
+      - ./services/info:/app
+      - /app/node_modules
+      - /app/dist
+    env_file:
+      - ".env.dev"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
       - db
 
   auth-service:
@@ -113,3 +145,4 @@ services:
 
 volumes:
   db_data:
+  db_info_data:

@@ -19,7 +19,7 @@ export function HecrasLegend() {
 
     const valuesStr = metadata[valuesKey];
     const rgbaStr = metadata[rgbaKey];
-    const title = metadata[titleKey] || activeHecras?.name || "Легенда";
+    const title = (metadata[titleKey] as string) || activeHecras?.name || "Легенда";
 
     if (!valuesStr || !rgbaStr) return null;
 
@@ -51,8 +51,8 @@ export function HecrasLegend() {
   if (!legend || !legend.items || legend.items.length === 0) return null;
 
   return (
-    <div className="absolute top-16 left-0 z-20 min-w-36 max-w-75">
-      <div className="bg-white rounded-e-xl overflow-hidden font-sans">
+    <div className="absolute top-4 right-4 z-20 min-w-36 max-w-75">
+      <div className="bg-white rounded-2xl overflow-hidden font-sans">
         <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
           <h6 className="font-medium text-gray-800">{legend.title}</h6>
         </div>

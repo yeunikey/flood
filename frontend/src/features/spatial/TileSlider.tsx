@@ -45,7 +45,7 @@ export function TileSlider() {
   const currentTileName = sortedTiles[safeIndex]?.name || activeTileId;
 
   return (
-    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2/3 p-4 pb-2 bg-white z-10 rounded-t-2xl shadow-lg">
+    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-2/3 p-4 pb-2 bg-white z-10 rounded-2xl shadow-lg">
       <Typography
         variant="body1"
         className="mb-2 block text-center text-xl font-medium"

@@ -13,68 +13,75 @@ function AuthWidget() {
 
   return (
     <Grow in={true}>
-      <div className="w-72">
-        <Typography variant="h4" textAlign={"center"} fontWeight={500}>
-          Паводки
-        </Typography>
-        <Typography
-          variant="body1"
-          color="grey.700"
-          marginTop={1}
-          textAlign={"center"}
-        >
-          Войдите в систему
-        </Typography>
-
-        <div className="flex flex-col gap-2 my-8">
-          <TextField
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            id="outlined-basic"
-            label="Логин"
-            variant="outlined"
-            size="small"
-          />
-          <TextField
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            id="outlined-basic"
-            label="Пароль"
-            variant="outlined"
-            type="password"
-            size="small"
-          />
-        </div>
-
-        <Button
-          variant="contained"
-          className="w-full"
-          disableElevation
-          onClick={() => {
-            if (type == "LOGIN") {
-              handleLogin();
-            } else {
-              handleCreate();
-            }
-          }}
-        >
-          {type == "LOGIN" ? "Войти" : "Зарегистрироваться"}
-        </Button>
-
-        <Divider className="py-4">
-          <Typography variant="body1" color="textDisabled">
-            или
+      <div className="w-lg h-128 bg-white rounded-4xl flex justify-center items-center">
+        <div className="w-80">
+          <Typography variant="h5" textAlign={"center"} fontWeight={500}>
+            ГИС-сервис
           </Typography>
-        </Divider>
+          <Typography
+            variant="body1"
+            color="grey.500"
+            marginTop={1}
+            textAlign={"center"}
+          >
+            Заполните поля ниже для того, <br />
+            чтобы войти в систему
+          </Typography>
 
-        <Button
-          variant="text"
-          className="w-full !text-gray-500"
-          href="https://forms.gle/Maz1gkPVFvcFRpkb8"
-          target="_blank"
-        >
-          Получить доступ
-        </Button>
+          <div className="flex flex-col gap-2 my-12">
+            <TextField
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              id="outlined-basic"
+              label="Логин"
+              variant="outlined"
+              size="medium"
+              placeholder="user"
+              className="text-sm"
+            />
+            <TextField
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              id="outlined-basic"
+              label="Пароль"
+              variant="outlined"
+              type="password"
+              size="small"
+              placeholder="••••••••"
+              className="text-sm"
+            />
+          </div>
+
+          <Button
+            variant="contained"
+            className="w-full"
+            disableElevation
+            onClick={() => {
+              if (type == "LOGIN") {
+                handleLogin();
+              } else {
+                handleCreate();
+              }
+            }}
+          >
+            {type == "LOGIN" ? "Войти" : "Зарегистрироваться"}
+          </Button>
+
+          <Divider className="py-4">
+            <Typography variant="body1" color="textDisabled">
+              или
+            </Typography>
+          </Divider>
+
+          <Button
+            variant="text"
+            className="w-full !text-gray-500"
+            href="https://forms.gle/Maz1gkPVFvcFRpkb8"
+            target="_blank"
+          >
+            Получить доступ
+          </Button>
+        </div>
       </div>
     </Grow>
   );

@@ -1,0 +1,50 @@
+{
+  "name": "FloodAnalytics",
+  "version": "1.0.0",
+  "main": "dist/main.js",
+  "scripts": {
+    "start": "electron-forge start",
+    "build": "tsc && electron-builder",
+    "package": "electron-forge package",
+    "make": "electron-forge make"
+  },
+  "keywords": [],
+  "author": "Astana IT University",
+  "license": "ISC",
+  "description": "Flood Analytics",
+  "devDependencies": {
+    "@electron-forge/cli": "^7.11.1",
+    "@electron-forge/maker-deb": "^7.11.1",
+    "@electron-forge/maker-rpm": "^7.11.1",
+    "@electron-forge/maker-squirrel": "^7.11.1",
+    "@electron-forge/maker-zip": "^7.11.1",
+    "@electron-forge/plugin-auto-unpack-natives": "^7.11.1",
+    "@electron-forge/plugin-fuses": "^7.11.1",
+    "@electron/fuses": "^1.8.0",
+    "electron": "^40.6.1",
+    "ts-node": "^10.9.2",
+    "electron-builder": "^26.8.1",
+    "typescript": "^5.9.3"
+  },
+  "build": {
+    "appId": "kz.astanait.flood",
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": "nsis",
+      "executableName": "FloodAnalytics"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "perMachine": true
+    }
+  },
+  "dependencies": {
+    "-": "^0.0.1",
+    "electron-squirrel-startup": "^1.0.1"
+  }
+}

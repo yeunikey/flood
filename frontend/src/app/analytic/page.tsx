@@ -68,6 +68,7 @@ export default function Analytic() {
               overflowY: "auto",
               overflowX: "hidden",
               width: "100%",
+              height: "100%",
               p: 0,
             }}
           >
@@ -76,7 +77,7 @@ export default function Analytic() {
             ) : (
               <>
                 {viewMode === "table" ? (
-                  <Box sx={{ maxWidth: "100%", width: "100%" }}>
+                  <Box sx={{ maxWidth: "100%", width: "100%", height: "100%" }}>
                     <TablesWidget />
                   </Box>
                 ) : (
