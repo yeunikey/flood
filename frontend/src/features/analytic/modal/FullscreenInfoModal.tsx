@@ -264,8 +264,9 @@ export default function FullscreenTableModal({
                           align="center"
                           sx={{
                             whiteSpace: "nowrap",
-                            backgroundColor: "#f9fafb",
-                            fontWeight: 600,
+                            backgroundColor: "#f1f5f9",
+                            fontWeight: "semibold",
+                            paddingY: "12px",
                           }}
                         >
                           #
@@ -273,8 +274,9 @@ export default function FullscreenTableModal({
                         <TableCell
                           sx={{
                             whiteSpace: "nowrap",
-                            backgroundColor: "#f9fafb",
-                            fontWeight: 600,
+                            backgroundColor: "#f1f5f9",
+                            fontWeight: "semibold",
+                            paddingY: "12px",
                           }}
                         >
                           Время измерения
@@ -284,8 +286,9 @@ export default function FullscreenTableModal({
                             key={v.id}
                             sx={{
                               whiteSpace: "nowrap",
-                              backgroundColor: "#f9fafb",
-                              fontWeight: 600,
+                              backgroundColor: "#f1f5f9",
+                              fontWeight: "semibold",
+                              paddingY: "12px",
                             }}
                           >
                             {v.name}
@@ -320,7 +323,13 @@ export default function FullscreenTableModal({
                                 key={variable.id}
                                 sx={{ whiteSpace: "nowrap" }}
                               >
-                                {value?.value ?? "-"}
+                                {value?.value !== undefined &&
+                                !isNaN(Number(value.value)) &&
+                                value.value !== ""
+                                  ? Number(value.value).toFixed(3) +
+                                    " " +
+                                    value.variable.unit.symbol
+                                  : (value?.value ?? "-")}{" "}
                               </TableCell>
                             );
                           })}

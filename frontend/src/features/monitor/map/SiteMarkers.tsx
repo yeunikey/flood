@@ -56,30 +56,60 @@ function SiteMarkers() {
           const paramValue = SNOW_DATA[site.code];
           if (paramValue) {
             size = getSnowMarkerSize(paramValue);
-            console.log(size);
           }
         }
 
+        const container = document.createElement("div");
+        container.style.width = `${size}px`;
+        container.style.height = `${size}px`;
+        container.style.cursor = "pointer";
+        container.style.zIndex = "1000";
+        container.style.setProperty("transition", "none", "important");
+
         const el = document.createElement("div");
-        el.className = "custom-marker";
-        el.id = `marker-${site.id}`;
-        el.style.width = `${size}px`;
-        el.style.height = `${size}px`;
+        el.style.width = "100%";
+        el.style.height = "100%";
         el.style.backgroundColor = color;
         el.style.border = "1px solid white";
         el.style.borderRadius = "50%";
         el.style.boxShadow = "0 0 4px rgba(0,0,0,0.3)";
-        el.style.cursor = "pointer";
-        el.style.zIndex = "1000";
+        el.style.boxSizing = "border-box";
+        el.style.setProperty("transition", "none", "important");
 
-        el.onclick = () => {
+        const label = document.createElement("span");
+        label.textContent = site.name;
+        label.style.position = "absolute";
+        label.style.left = "100%";
+        label.style.top = "50%";
+        label.style.transform = "translateY(-50%)";
+        label.style.marginLeft = "8px";
+        label.style.fontSize = "12px";
+        label.style.fontWeight = "semibold";
+        label.style.color = "#fff";
+        label.style.textShadow = "1px 1px 2px #000, -1px -1px 2px #000, 1px -1px 2px #000, -1px 1px 2px #000";
+        label.style.whiteSpace = "nowrap";
+        label.style.opacity = "0";
+        label.style.pointerEvents = "none";
+        label.style.transition = "opacity 0.2s ease-in-out";
+
+        container.appendChild(el);
+        container.appendChild(label);
+
+        container.onmouseenter = () => {
+          label.style.opacity = "1";
+        };
+
+        container.onmouseleave = () => {
+          label.style.opacity = "0";
+        };
+
+        container.onclick = () => {
           setSelectedSite(site);
           setSelectedCategory(layer.category);
         };
 
-        const marker = new mapboxgl.Marker({ element: el })
+        const marker = new mapboxgl.Marker({ element: container, anchor: "center" })
           .setLngLat([site.longtitude, site.latitude])
-          .setPopup(new mapboxgl.Popup().setText(site.name))
           .addTo(map);
 
         markerRefs.current.push(marker);

@@ -15,6 +15,7 @@ import { useAuth } from "@/shared/model/auth";
 import { fetchAnalyticData } from "./model/fetchCategory";
 import { AnalyticSite, useAnalyticSites } from "./model/useAnalyticSites";
 import useAnalyticStore from "./model/useAnalyticStore";
+import { blue } from "@mui/material/colors";
 
 type TableProps = {
   selectedSite: AnalyticSite;
@@ -132,8 +133,9 @@ function AnalyticTable({ selectedSite, selectedSourceId }: TableProps) {
                   align="center"
                   sx={{
                     whiteSpace: "nowrap",
-                    backgroundColor: "#f5f5f5",
-                    fontWeight: "bold",
+                    backgroundColor: "#f1f5f9",
+                    fontWeight: "semibold",
+                    paddingY: "12px"
                   }}
                 >
                   #
@@ -141,8 +143,9 @@ function AnalyticTable({ selectedSite, selectedSourceId }: TableProps) {
                 <TableCell
                   sx={{
                     whiteSpace: "nowrap",
-                    backgroundColor: "#f5f5f5",
-                    fontWeight: "bold",
+                    backgroundColor: "#f1f5f9",
+                    fontWeight: "semibold",
+                    paddingY: "12px"
                   }}
                 >
                   Время измерения
@@ -154,8 +157,9 @@ function AnalyticTable({ selectedSite, selectedSourceId }: TableProps) {
                       key={v.id}
                       sx={{
                         whiteSpace: "nowrap",
-                        backgroundColor: "#f5f5f5",
-                        fontWeight: "bold",
+                        backgroundColor: "#f1f5f9",
+                        fontWeight: "semibold",
+                        paddingY: "12px"
                       }}
                     >
                       {v.name}
@@ -192,7 +196,7 @@ function AnalyticTable({ selectedSite, selectedSourceId }: TableProps) {
                           {value?.value !== undefined &&
                           !isNaN(Number(value.value)) &&
                           value.value !== ""
-                            ? Number(value.value).toFixed(3)
+                            ? Number(value.value).toFixed(3) + " " + value.variable.unit.symbol
                             : (value?.value ?? "-")}
                         </TableCell>
                       );

@@ -22,7 +22,7 @@ import {
 import { useMonitorStore } from "../model/useMontorStore";
 import { api } from "@/shared/model/api/instance";
 import { useEffect, useState } from "react";
-import { ApiResponse } from "@/types";
+import { ApiResponse, DataValue } from "@/types";
 import TuneIcon from "@mui/icons-material/Tune";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import { useDisabledVariables } from "../model/useDisabledVariables";
@@ -30,16 +30,8 @@ import { useDisabledVariables } from "../model/useDisabledVariables";
 import VariablesSettingsModal from "../modal/VariablesSettingsModal";
 import FullscreenTableModal from "../modal/FullscreenInfoModal";
 import DataSource from "@/entities/source/types/sources";
+import Variable from "@/entities/variable/types/variable";
 
-interface Variable {
-  id: number;
-  name: string;
-}
-interface DataValue {
-  id: number;
-  value: string;
-  variable: Variable;
-}
 interface GroupedData {
   group: {
     id: number;
@@ -263,7 +255,9 @@ function TableInfo() {
                         align="center"
                         sx={{
                           whiteSpace: "nowrap",
-                          backgroundColor: "#f5f5f5",
+                          backgroundColor: "#f1f5f9",
+                          fontWeight: "semibold",
+                          paddingY: "12px",
                         }}
                       >
                         #
@@ -271,7 +265,9 @@ function TableInfo() {
                       <TableCell
                         sx={{
                           whiteSpace: "nowrap",
-                          backgroundColor: "#f5f5f5",
+                          backgroundColor: "#f1f5f9",
+                          fontWeight: "semibold",
+                          paddingY: "12px",
                         }}
                       >
                         Время измерения
@@ -283,7 +279,9 @@ function TableInfo() {
                             key={v.id}
                             sx={{
                               whiteSpace: "nowrap",
-                              backgroundColor: "#f5f5f5",
+                              backgroundColor: "#f1f5f9",
+                              fontWeight: "semibold",
+                              paddingY: "12px",
                             }}
                           >
                             {v.name}
@@ -323,7 +321,9 @@ function TableInfo() {
                                 {value?.value !== undefined &&
                                 !isNaN(Number(value.value)) &&
                                 value.value !== ""
-                                  ? Number(value.value).toFixed(3)
+                                  ? Number(value.value).toFixed(3) +
+                                    " " +
+                                    value.variable.unit.symbol
                                   : (value?.value ?? "-")}
                               </TableCell>
                             );

@@ -3,13 +3,7 @@ import "./globals.css";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Authorize from "@/shared/ui/Authorize";
 import { ToastContainer } from "react-toastify";
-import { Golos_Text } from "next/font/google";
-
-const golos = Golos_Text({
-  subsets: ["latin", "cyrillic"],
-  weight: ["400", "500", "600", "700", "800", "900"],
-  variable: "--font-golos",
-});
+import { golos } from "@/shared/fonts/golos";
 
 export const metadata: Metadata = {
   title: "Панель управления Flood Analytics",

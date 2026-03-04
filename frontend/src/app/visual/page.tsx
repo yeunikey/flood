@@ -3,8 +3,10 @@
 import { fetchHecRas } from "@/entities/hec-ras/api/fetchHecRas";
 import { fetchLayers } from "@/entities/layer/api/fetchLayers";
 import { fetchPools } from "@/entities/pool/api/fetchPools";
+import CalculationMap from "@/features/visual/calculation/CalculationMap";
 import { useAuth } from "@/shared/model/auth";
 import View from "@/shared/ui/View";
+import CalculationWidget from "@/widgets/visual/CalculationWidget";
 import HecRasWidget from "@/widgets/visual/HecRasWidget";
 import PredictionWidget from "@/widgets/visual/PredictionWidget";
 import { Divider, Tab, Tabs } from "@mui/material";
@@ -34,6 +36,7 @@ function SpatialPage() {
           <Tabs value={currentPage} onChange={handleChange}>
             <Tab label="Сценарии HEC-RAS" />
             <Tab label="Прогнозы моделей" />
+            <Tab label="Расчёты Q1" />
           </Tabs>
         </div>
 
@@ -42,6 +45,7 @@ function SpatialPage() {
         <div className="flex-1 min-h-0 relative">
           {currentPage == 0 && <HecRasWidget />}
           {currentPage == 1 && <PredictionWidget />}
+          {currentPage == 2 && <CalculationWidget />}
         </div>
       </div>
     </View>
