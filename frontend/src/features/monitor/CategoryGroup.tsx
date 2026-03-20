@@ -10,6 +10,7 @@ import {
   List,
 } from "@mui/material";
 import SiteRow from "./SiteRow";
+import { Category } from "@/entities/category/types/categories";
 
 interface CategoryGroupProps {
   categoryName: string;
@@ -26,6 +27,7 @@ interface CategoryGroupProps {
   activeTooltipId: string | null;
   onTooltipToggle: (id: string) => void;
   standalone?: boolean;
+  category: Category
 }
 
 const CategoryGroup = ({
@@ -42,14 +44,13 @@ const CategoryGroup = ({
   activeTooltipId,
   onTooltipToggle,
   standalone = false,
+  category
 }: CategoryGroupProps) => {
   return (
     <div>
-      <ListItemButton
-        sx={{ pl: standalone ? 3 : 4 }}
-        onClick={() => onToggleExpand(expandedId)}
-      >
+      <ListItemButton onClick={() => onToggleExpand(expandedId)}>
         <ListItemText
+          sx={{ pl: standalone ? 3 : 1 }}
           primary={<Typography fontWeight={500}>{categoryName}</Typography>}
           secondary={categoryDescription}
         />
@@ -57,7 +58,7 @@ const CategoryGroup = ({
       </ListItemButton>
 
       <Collapse in={isExpanded} timeout="auto" unmountOnExit>
-        <Box className="flex gap-2 ps-8 pe-3 pt-3 pb-3">
+        <Box className="flex gap-2 ps-10 pe-3 pt-3 pb-3">
           <Button
             variant="outlined"
             color="primary"
@@ -92,6 +93,7 @@ const CategoryGroup = ({
                 activeTooltipId={activeTooltipId}
                 onTooltipToggle={onTooltipToggle}
                 standalone={standalone}
+                category={category}
               />
             ))}
         </List>

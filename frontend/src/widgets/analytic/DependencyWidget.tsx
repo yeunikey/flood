@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import {
   Paper,
@@ -190,16 +189,17 @@ const DependencyWidget: React.FC = () => {
       if (!site || !site.chartResult) return;
 
       const dataMap = new Map<string, number>();
+      
       site.chartResult.forEach((d) => {
-        const valObj = d.values.find((v: any) => v.variable.id === item.varId);
-        if (valObj) {
-          const val = valObj.value;
-          if (val !== undefined && val !== null && val !== "") {
-            const num = Number(String(val).replace(",", "."));
-            if (!isNaN(num)) {
-              dataMap.set(d.group.date_utc, num);
-              timestampsSet.add(d.group.date_utc);
-            }
+        const vIndex = (d.variables || []).indexOf(item.varId);
+        const valStr = vIndex !== -1 ? d.values?.[vIndex] : undefined;
+
+        if (valStr !== undefined && valStr !== "") {
+          const num = Number(valStr.replace(",", "."));
+          if (!Number.isNaN(num)) {
+            const dateStr = d.date_utc || "";
+            dataMap.set(dateStr, num);
+            timestampsSet.add(dateStr);
           }
         }
       });
@@ -250,7 +250,7 @@ const DependencyWidget: React.FC = () => {
         resultMatrix.push({
           x: s1.label,
           y: s2.label,
-          r: isNaN(correlationValue) ? 0 : correlationValue,
+          r: Number.isNaN(correlationValue) ? 0 : correlationValue,
         });
       }
     }
@@ -275,7 +275,7 @@ const DependencyWidget: React.FC = () => {
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const val = parseFloat(event.target.value);
-    if (!isNaN(val) && val >= 0 && val <= 1) {
+    if (!Number.isNaN(val) && val >= 0 && val <= 1) {
       setCutoff(val);
     }
   };

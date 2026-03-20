@@ -8,7 +8,7 @@ import CategoryGroup from "./CategoryGroup";
 import { useAnalyticSites } from "./model/useAnalyticSites";
 import Site from "@/entities/site/types/site";
 import { Category } from "@/entities/category/types/categories";
-import { fetchSite } from "./model/fetchCategory";
+import { fetchAnalyticData, fetchSite } from "./model/fetchCategory";
 
 function AnalyticItems() {
   const { pools } = usePools();

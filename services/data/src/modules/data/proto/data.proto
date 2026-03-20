@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package data;
+
+message MethodInfo {
+  string name = 1;
+  string description = 2;
+}
+
+message SourceInfo {
+  string name = 1;
+}
+
+message QclInfo {
+  string name = 1;
+  string description = 2;
+}
+
+message FormattedGroup {
+  int32 id = 1;
+  string date_utc = 2;
+  int32 category = 3;
+  string site_code = 4;
+  MethodInfo method = 5;
+  SourceInfo source = 6;
+  QclInfo qcl = 7;
+  repeated int32 variables = 8;
+  repeated string values = 9;
+}
+
+message AllDates {
+  string minDate = 1;
+  string maxDate = 2;
+}
+
+message GetResponse {
+  int32 statusCode = 1;
+  repeated FormattedGroup groups = 2;
+  string startDate = 3;
+  string endDate = 4;
+  AllDates allDates = 5;
+}
+
+message PaginatedResponse {
+  int32 statusCode = 1;
+  repeated FormattedGroup content = 2;
+  int32 total = 3;
+  int32 page = 4;
+  int32 limit = 5;
+  int32 totalPages = 6;
+  string minDate = 7;
+  string maxDate = 8;
+}

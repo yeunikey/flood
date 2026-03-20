@@ -373,13 +373,33 @@ export class DataService {
     };
   }
 
+  private async getEffectiveSourceId(
+    categoryId: number,
+
+    siteCode: string,
+
+    requestedSourceId?: number,
+  ): Promise<number | undefined> {
+    if (requestedSourceId) return requestedSourceId;
+
+    const latestGroup = await this.groupRepo.findOne({
+      where: { category: { id: categoryId }, site: { code: siteCode } },
+
+      relations: ['source'],
+
+      order: { date_utc: 'DESC' },
+    });
+
+    return latestGroup?.source?.id;
+  }
+
   async findGroupsByCategoryAndSiteCodeByDate(
     categoryId: number,
     siteCode: string,
     start?: Date,
     end?: Date,
     sourceId?: number,
-  ): Promise<ByDateResponse> {
+  ) {
     const effectiveSourceId = await this.getEffectiveSourceId(
       categoryId,
       siteCode,
@@ -399,109 +419,130 @@ export class DataService {
       });
     }
 
-    const allDates = await dateQb
-      .select([
-        'MIN(group.date_utc) as "minDate"',
-        'MAX(group.date_utc) as "maxDate"',
-      ])
-      .getRawOne<{ minDate: Date; maxDate: Date }>();
+    const allDatesRaw = await dateQb
+      .select('MIN(group.date_utc)', 'mindate')
+      .addSelect('MAX(group.date_utc)', 'maxdate')
+      .getRawOne<{ mindate: string; maxdate: string }>();
 
-    if (!allDates?.maxDate) {
-      return {
-        data: {
-          content: [],
-          start: null,
-          end: null,
-          minDate: null,
-          maxDate: null,
-          total: 0,
-        },
-      };
-    }
+    if (!allDatesRaw?.maxdate) return null;
 
-    if (!start || !end) {
-      end = allDates.maxDate;
-      const tmp = new Date(end);
+    const allDates = {
+      minDate: allDatesRaw.mindate,
+      maxDate: allDatesRaw.maxdate,
+    };
+
+    console.log(allDates);
+
+    const maxDateObj = new Date(allDates.maxDate);
+    let startDate = start;
+    let endDate = end;
+
+    if (!startDate || !endDate) {
+      endDate = maxDateObj;
+      const tmp = new Date(endDate);
       tmp.setMonth(tmp.getMonth() - 1);
-      start = start ?? tmp;
+      startDate = start ?? tmp;
     }
 
-    const elevenYearsInMs = 11 * 365.25 * 24 * 60 * 60 * 1000;
-    if (Math.abs(end.getTime() - start.getTime()) > elevenYearsInMs) {
-      throw new BadRequestException('Date range cannot exceed 11 years');
-    }
-
-    const groupsQb = this.groupRepo
+    const qb = this.groupRepo
       .createQueryBuilder('group')
-      .leftJoinAndSelect('group.site', 'site')
-      .leftJoinAndSelect('group.category', 'category')
-      .leftJoinAndSelect('group.method', 'method')
-      .leftJoinAndSelect('group.source', 'source')
-      .leftJoinAndSelect('group.qcl', 'qcl')
+      .select([
+        'group.id AS id',
+        'group.date_utc AS date_utc',
+        'site.code AS site_code',
+        'category.id AS category',
+        'method.name AS method_name',
+        'method.description AS method_description',
+        'source.name AS source_name',
+        'qcl.name AS qcl_name',
+        'qcl.description AS qcl_description',
+      ])
+      .leftJoin('group.site', 'site')
+      .leftJoin('group.category', 'category')
+      .leftJoin('group.method', 'method')
+      .leftJoin('group.source', 'source')
+      .leftJoin('group.qcl', 'qcl')
       .where('category.id = :categoryId', { categoryId })
       .andWhere('site.code = :siteCode', { siteCode })
-      .andWhere('group.date_utc BETWEEN :start AND :end', { start, end });
+      .andWhere('group.date_utc BETWEEN :start AND :end', {
+        start: startDate,
+        end: endDate,
+      })
+      .orderBy('group.date_utc', 'ASC');
 
     if (effectiveSourceId) {
-      groupsQb.andWhere('group.source_id = :effectiveSourceId', {
+      qb.andWhere('group.source_id = :effectiveSourceId', {
         effectiveSourceId,
       });
     }
 
-    const groups = await groupsQb.orderBy('group.date_utc', 'ASC').getMany();
+    const rawGroups = await qb.getRawMany<Record<string, unknown>>();
 
-    if (groups.length === 0) {
-      return {
-        data: {
-          content: [],
-          start,
-          end,
-          minDate: allDates.minDate,
-          maxDate: allDates.maxDate,
-          total: 0,
-        },
-      };
+    if (rawGroups.length === 0) {
+      return { groups: [], startDate, endDate, allDates };
     }
 
-    const groupIds = groups.map((g) => g.id);
-    const dataValues = await this.dataValueRepo.find({
-      where: { group: { id: In(groupIds) } },
-      relations: ['variable', 'variable.unit'],
+    const groupIds = rawGroups.map((g) => Number(g.id));
+
+    const rawDataValues = await this.dataValueRepo
+      .createQueryBuilder('dv')
+      .select([
+        'dv.group_id AS group_id',
+        'dv.variable_id AS variable_id',
+        'dv.value AS value',
+      ])
+      .where('dv.group_id IN (:...groupIds)', { groupIds })
+      .getRawMany<{ group_id: number; variable_id: number; value: string }>();
+
+    const valuesMap = new Map<
+      number,
+      { variables: number[]; values: string[] }
+    >();
+
+    for (const dv of rawDataValues) {
+      const gId = dv.group_id;
+      if (!valuesMap.has(gId)) {
+        valuesMap.set(gId, { variables: [], values: [] });
+      }
+      const entry = valuesMap.get(gId);
+      if (entry) {
+        entry.variables.push(dv.variable_id);
+        entry.values.push(dv.value);
+      }
+    }
+
+    const formattedGroups = rawGroups.map((g) => {
+      const dvData = valuesMap.get(Number(g.id)) ?? {
+        variables: [],
+        values: [],
+      };
+
+      return {
+        id: Number(g.id),
+        date_utc: new Date(g.date_utc as string | Date),
+        category: Number(g.category),
+        site_code: typeof g.site_code === 'string' ? g.site_code : '',
+        method: {
+          name: typeof g.method_name === 'string' ? g.method_name : '',
+          description:
+            typeof g.method_description === 'string'
+              ? g.method_description
+              : '',
+        },
+        source: {
+          name: typeof g.source_name === 'string' ? g.source_name : '',
+        },
+        qcl: {
+          name: typeof g.qcl_name === 'string' ? g.qcl_name : '',
+          description:
+            typeof g.qcl_description === 'string' ? g.qcl_description : '',
+        },
+        variables: dvData.variables,
+        values: dvData.values,
+      };
     });
 
-    const content = groups.map((group) => ({
-      group,
-      values: dataValues
-        .filter((dv) => dv.group.id === group.id)
-        .map(({ group: _, ...dvWithoutGroup }) => dvWithoutGroup),
-    }));
-
-    return {
-      data: {
-        start,
-        end,
-        minDate: allDates.minDate,
-        maxDate: allDates.maxDate,
-        total: groups.length,
-        content,
-      },
-    };
-  }
-
-  private async getEffectiveSourceId(
-    categoryId: number,
-    siteCode: string,
-    requestedSourceId?: number,
-  ): Promise<number | undefined> {
-    if (requestedSourceId) return requestedSourceId;
-
-    const latestGroup = await this.groupRepo.findOne({
-      where: { category: { id: categoryId }, site: { code: siteCode } },
-      relations: ['source'],
-      order: { date_utc: 'DESC' },
-    });
-
-    return latestGroup?.source?.id;
+    return { groups: formattedGroups, startDate, endDate, allDates };
   }
 
   async findGroupsByCategoryAndSiteCodePaginated(
@@ -612,7 +653,7 @@ export class DataService {
       options.sourceId,
     );
 
-    const dateQb = this.groupRepo
+    const baseQb = this.groupRepo
       .createQueryBuilder('group')
       .leftJoin('group.category', 'category')
       .leftJoin('group.site', 'site')
@@ -620,25 +661,27 @@ export class DataService {
       .andWhere('site.code = :siteCode', { siteCode });
 
     if (effectiveSourceId) {
-      dateQb.andWhere('group.source_id = :effectiveSourceId', {
+      baseQb.andWhere('group.source_id = :effectiveSourceId', {
         effectiveSourceId,
       });
     }
 
-    const allDates = await dateQb
-      .select([
-        'MIN(group.date_utc) as "minDate"',
-        'MAX(group.date_utc) as "maxDate"',
-      ])
-      .getRawOne<{ minDate: Date; maxDate: Date }>();
+    const allDatesRaw = await baseQb
+      .select('MIN(group.date_utc)', 'mindate')
+      .addSelect('MAX(group.date_utc)', 'maxdate')
+      .getRawOne<{ mindate: string; maxdate: string }>();
+
+    const minDate = allDatesRaw?.mindate
+      ? new Date(allDatesRaw.mindate).toISOString()
+      : '';
+    const maxDate = allDatesRaw?.maxdate
+      ? new Date(allDatesRaw.maxdate).toISOString()
+      : '';
 
     const query = this.groupRepo
       .createQueryBuilder('group')
-      .leftJoinAndSelect('group.site', 'site')
-      .leftJoinAndSelect('group.category', 'category')
-      .leftJoinAndSelect('group.method', 'method')
-      .leftJoinAndSelect('group.source', 'source')
-      .leftJoinAndSelect('group.qcl', 'qcl')
+      .leftJoin('group.category', 'category')
+      .leftJoin('group.site', 'site')
       .where('category.id = :categoryId', { categoryId })
       .andWhere('site.code = :siteCode', { siteCode });
 
@@ -655,45 +698,111 @@ export class DataService {
       query.andWhere('group.date_utc <= :end', { end: options.end });
     }
 
-    const [groups, total] = await query
-      .orderBy('group.date_utc', 'DESC')
-      .skip(offset)
-      .take(limit)
-      .getManyAndCount();
+    const total = await query.getCount();
+    const totalPages = Math.ceil(total / limit);
 
-    if (groups.length === 0) {
+    if (total === 0) {
       return {
+        statusCode: 200,
         content: [],
         total,
         page,
         limit,
-        totalPages: Math.ceil(total / limit),
-        minDate: allDates?.minDate || null,
-        maxDate: allDates?.maxDate || null,
+        totalPages,
+        minDate,
+        maxDate,
       };
     }
 
-    const groupIds = groups.map((g) => g.id);
-    const dataValues = await this.dataValueRepo.find({
-      where: { group: { id: In(groupIds) } },
-      relations: ['variable', 'variable.unit'],
+    const rawGroups = await query
+      .select([
+        'group.id AS id',
+        'group.date_utc AS date_utc',
+        'site.code AS site_code',
+        'category.id AS category',
+        'method.name AS method_name',
+        'method.description AS method_description',
+        'source.name AS source_name',
+        'qcl.name AS qcl_name',
+        'qcl.description AS qcl_description',
+      ])
+      .leftJoin('group.method', 'method')
+      .leftJoin('group.source', 'source')
+      .leftJoin('group.qcl', 'qcl')
+      .orderBy('group.date_utc', 'DESC')
+      .offset(offset)
+      .limit(limit)
+      .getRawMany<Record<string, unknown>>();
+
+    const groupIds = rawGroups.map((g) => Number(g.id));
+
+    const rawDataValues = await this.dataValueRepo
+      .createQueryBuilder('dv')
+      .select([
+        'dv.group_id AS group_id',
+        'dv.variable_id AS variable_id',
+        'dv.value AS value',
+      ])
+      .where('dv.group_id IN (:...groupIds)', { groupIds })
+      .getRawMany<{ group_id: number; variable_id: number; value: string }>();
+
+    const valuesMap = new Map<
+      number,
+      { variables: number[]; values: string[] }
+    >();
+
+    for (const dv of rawDataValues) {
+      const gId = dv.group_id;
+      if (!valuesMap.has(gId)) {
+        valuesMap.set(gId, { variables: [], values: [] });
+      }
+      const entry = valuesMap.get(gId);
+      if (entry) {
+        entry.variables.push(dv.variable_id);
+        entry.values.push(dv.value ?? '');
+      }
+    }
+
+    const content = rawGroups.map((g) => {
+      const dvData = valuesMap.get(Number(g.id)) ?? {
+        variables: [],
+        values: [],
+      };
+
+      return {
+        id: Number(g.id),
+        date_utc: new Date(g.date_utc as string | Date).toISOString(),
+        category: Number(g.category),
+        site_code: typeof g.site_code === 'string' ? g.site_code : '',
+        method: {
+          name: typeof g.method_name === 'string' ? g.method_name : '',
+          description:
+            typeof g.method_description === 'string'
+              ? g.method_description
+              : '',
+        },
+        source: {
+          name: typeof g.source_name === 'string' ? g.source_name : '',
+        },
+        qcl: {
+          name: typeof g.qcl_name === 'string' ? g.qcl_name : '',
+          description:
+            typeof g.qcl_description === 'string' ? g.qcl_description : '',
+        },
+        variables: dvData.variables,
+        values: dvData.values,
+      };
     });
 
-    const content = groups.map((group) => ({
-      group,
-      values: dataValues
-        .filter((dv) => dv.group.id === group.id)
-        .map(({ group: _, ...dvWithoutGroup }) => dvWithoutGroup),
-    }));
-
     return {
+      statusCode: 200,
       content,
       total,
       page,
       limit,
-      totalPages: Math.ceil(total / limit),
-      minDate: allDates?.minDate || null,
-      maxDate: allDates?.maxDate || null,
+      totalPages,
+      minDate,
+      maxDate,
     };
   }
 
@@ -734,44 +843,104 @@ export class DataService {
     start?: Date,
     end?: Date,
   ): Promise<string> {
-    const { data } = await this.findGroupsByCategoryAndSiteCodeByDate(
+    const result = await this.findGroupsByCategoryAndSiteCodeByDate(
       categoryId,
       siteCode,
       start,
       end,
     );
 
-    if (!data.content.length) {
+    if (!result || !result.groups.length) {
       return '';
     }
 
-    const variableMap = new Map<number, string>();
-    data.content.forEach((row) => {
-      row.values.forEach((v) => {
-        variableMap.set(
-          v.variable.id,
-          `${v.variable.name} [${v.variable.unit.symbol}]`,
-        );
-      });
+    const groups = result.groups;
+    const variableIdsSet = new Set<number>();
+
+    groups.forEach((g) => {
+      g.variables.forEach((vid) => variableIdsSet.add(vid));
     });
 
-    const variableIds = Array.from(variableMap.keys());
-    const header = ['Date UTC', ...Array.from(variableMap.values())].join(',');
+    const variableIds = Array.from(variableIdsSet);
+    if (variableIds.length === 0) {
+      return 'Date UTC\n';
+    }
 
-    const rows = data.content.map((row) => {
+    const variables = await this.variableRepo.find({
+      where: { id: In(variableIds) },
+      relations: ['unit'],
+    });
+
+    const variableMap = new Map(
+      variables.map((v) => [v.id, `${v.name} [${v.unit?.symbol ?? ''}]`]),
+    );
+
+    const header = [
+      'Date UTC',
+      ...variableIds.map((id) => variableMap.get(id) ?? `Var_${id}`),
+    ].join(',');
+
+    const rows = groups.map((group) => {
       const date =
-        row.group.date_utc instanceof Date
-          ? row.group.date_utc.toISOString()
-          : new Date(row.group.date_utc).toISOString();
+        group.date_utc instanceof Date
+          ? group.date_utc.toISOString()
+          : new Date(group.date_utc).toISOString();
 
-      const values = variableIds.map((vid) => {
-        const found = row.values.find((v) => v.variable.id === vid);
-        return found ? found.value : '';
+      const rowValues = variableIds.map((vid) => {
+        const idx = group.variables.indexOf(vid);
+        return idx !== -1 ? group.values[idx] : '';
       });
 
-      return [date, ...values].join(',');
+      return [date, ...rowValues].join(',');
     });
 
     return [header, ...rows].join('\n');
   }
+
+  // async generateCsv(
+  //   categoryId: number,
+  //   siteCode: string,
+  //   start?: Date,
+  //   end?: Date,
+  // ): Promise<string> {
+  //   const { data } = await this.findGroupsByCategoryAndSiteCodeByDate(
+  //     categoryId,
+  //     siteCode,
+  //     start,
+  //     end,
+  //   );
+
+  //   if (!data.content.length) {
+  //     return '';
+  //   }
+
+  //   const variableMap = new Map<number, string>();
+  //   data.content.forEach((row) => {
+  //     row.values.forEach((v) => {
+  //       variableMap.set(
+  //         v.variable.id,
+  //         `${v.variable.name} [${v.variable.unit.symbol}]`,
+  //       );
+  //     });
+  //   });
+
+  //   const variableIds = Array.from(variableMap.keys());
+  //   const header = ['Date UTC', ...Array.from(variableMap.values())].join(',');
+
+  //   const rows = data.content.map((row) => {
+  //     const date =
+  //       row.group.date_utc instanceof Date
+  //         ? row.group.date_utc.toISOString()
+  //         : new Date(row.group.date_utc).toISOString();
+
+  //     const values = variableIds.map((vid) => {
+  //       const found = row.values.find((v) => v.variable.id === vid);
+  //       return found ? found.value : '';
+  //     });
+
+  //     return [date, ...values].join(',');
+  //   });
+
+  //   return [header, ...rows].join('\n');
+  // }
 }

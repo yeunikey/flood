@@ -12,10 +12,10 @@ import {
 } from "@mui/material";
 import { useEffect } from "react";
 import { useAuth } from "@/shared/model/auth";
-import { fetchAnalyticData } from "./model/fetchCategory";
 import { AnalyticSite, useAnalyticSites } from "./model/useAnalyticSites";
 import useAnalyticStore from "./model/useAnalyticStore";
-import { blue } from "@mui/material/colors";
+import { fetchAnalyticData } from "./model/fetchCategory";
+import { FormattedGroup } from "./model/useAnalyticSites";
 
 type TableProps = {
   selectedSite: AnalyticSite;
@@ -24,7 +24,7 @@ type TableProps = {
 
 function AnalyticTable({ selectedSite, selectedSourceId }: TableProps) {
   const { token } = useAuth();
-  const { fromDate, toDate } = useAnalyticStore();
+  const { fromDate, toDate, disabledVariables } = useAnalyticStore();
   const { activeSites, setSitePage, setSiteRowsPerPage } = useAnalyticSites();
 
   const record = activeSites[selectedSite.category.id];
@@ -32,12 +32,10 @@ function AnalyticTable({ selectedSite, selectedSourceId }: TableProps) {
   const variables = record.variables;
 
   const loading = siteState?.loading ?? false;
-  const infoData = siteState?.result?.content ?? [];
+  const infoData = (siteState?.result?.content as unknown as FormattedGroup[]) ?? [];
   const totalRows = siteState?.result?.total ?? 0;
   const page = siteState?.page ?? 0;
   const rowsPerPage = siteState?.rowsPerPage ?? 10;
-
-  const { disabledVariables } = useAnalyticStore();
 
   const isDisabled = (varId: number) => {
     const key = `${selectedSite.category.id}-${selectedSite.id}`;
@@ -45,37 +43,24 @@ function AnalyticTable({ selectedSite, selectedSourceId }: TableProps) {
   };
 
   useEffect(() => {
-    if (!token || !siteState) return;
-
-    if (selectedSourceId) {
+    if (selectedSourceId !== undefined) {
       setSitePage(selectedSite.category.id, selectedSite.id, 0);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSourceId]);
+  }, [selectedSourceId, selectedSite.category.id, selectedSite.id, setSitePage]);
 
   useEffect(() => {
     if (!token || !siteState) return;
-    if (siteState.loading) return;
 
     fetchAnalyticData(
       token,
-      siteState,
+      selectedSite,
       page,
       rowsPerPage,
       fromDate,
       toDate,
       selectedSourceId,
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    page,
-    rowsPerPage,
-    fromDate,
-    toDate,
-    token,
-    selectedSite.id,
-    selectedSourceId,
-  ]);
+  }, [page, rowsPerPage, fromDate, toDate, selectedSourceId, token, selectedSite.id]);
 
   const handleChangePage = (_: unknown, newPage: number) => {
     setSitePage(selectedSite.category.id, selectedSite.id, newPage);
@@ -135,7 +120,7 @@ function AnalyticTable({ selectedSite, selectedSourceId }: TableProps) {
                     whiteSpace: "nowrap",
                     backgroundColor: "#f1f5f9",
                     fontWeight: "semibold",
-                    paddingY: "12px"
+                    paddingY: "12px",
                   }}
                 >
                   #
@@ -145,7 +130,7 @@ function AnalyticTable({ selectedSite, selectedSourceId }: TableProps) {
                     whiteSpace: "nowrap",
                     backgroundColor: "#f1f5f9",
                     fontWeight: "semibold",
-                    paddingY: "12px"
+                    paddingY: "12px",
                   }}
                 >
                   Время измерения
@@ -159,7 +144,7 @@ function AnalyticTable({ selectedSite, selectedSourceId }: TableProps) {
                         whiteSpace: "nowrap",
                         backgroundColor: "#f1f5f9",
                         fontWeight: "semibold",
-                        paddingY: "12px"
+                        paddingY: "12px",
                       }}
                     >
                       {v.name}
@@ -169,12 +154,12 @@ function AnalyticTable({ selectedSite, selectedSourceId }: TableProps) {
             </TableHead>
             <TableBody>
               {infoData.map((group, i) => (
-                <TableRow key={group.group.id} hover>
+                <TableRow key={group.id} hover>
                   <TableCell align="center">
                     {page * rowsPerPage + i + 1}
                   </TableCell>
                   <TableCell sx={{ whiteSpace: "nowrap" }}>
-                    {new Date(group.group.date_utc).toLocaleString("ru-RU", {
+                    {new Date(group.date_utc).toLocaleString("ru-RU", {
                       day: "2-digit",
                       month: "2-digit",
                       year: "numeric",
@@ -185,19 +170,21 @@ function AnalyticTable({ selectedSite, selectedSourceId }: TableProps) {
                   {variables
                     .filter((v) => !isDisabled(v.id))
                     .map((variable) => {
-                      const value = group.values.find(
-                        (e) => e.variable.id === variable.id,
-                      );
+                      const vIndex = (group.variables ?? []).indexOf(variable.id);
+                      const valStr = vIndex !== -1 ? group.values?.[vIndex] : undefined;
+
                       return (
                         <TableCell
                           key={variable.id}
                           sx={{ whiteSpace: "nowrap" }}
                         >
-                          {value?.value !== undefined &&
-                          !isNaN(Number(value.value)) &&
-                          value.value !== ""
-                            ? Number(value.value).toFixed(3) + " " + value.variable.unit.symbol
-                            : (value?.value ?? "-")}
+                          {valStr !== undefined &&
+                          !isNaN(Number(valStr)) &&
+                          valStr !== ""
+                            ? Number(valStr).toFixed(3) +
+                              " " +
+                              variable.unit.symbol
+                            : (valStr ?? "-")}
                         </TableCell>
                       );
                     })}

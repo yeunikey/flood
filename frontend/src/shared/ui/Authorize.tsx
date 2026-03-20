@@ -28,24 +28,29 @@ function Authorize({ children }: AuthProps) {
 
     const token = String(Cookies.get("token"));
 
-    await api
-      .get<ApiResponse<User>>("auth/profile", {
-        headers: {
-          Authorization: "Bearer " + token,
-        },
-      })
-      .then((response) => {
-        if (response.data.statusCode == 400) {
-          setLoading(false);
-          Cookies.remove("token");
-          return;
-        }
+    try {
+      await api
+        .get<ApiResponse<User>>("auth/profile", {
+          headers: {
+            Authorization: "Bearer " + token,
+          },
+        })
+        .then((response) => {
+          if (response.status == 401) {
+            window.location.href = "/auth";
+            Cookies.remove("token");
+            return;
+          }
 
-        setToken(token);
-        setUser(response.data.data);
-
-        setLoading(false);
-      });
+          setToken(token);
+          setUser(response.data.data);
+        });
+    } catch {
+      window.location.href = "/auth";
+      Cookies.remove("token");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {

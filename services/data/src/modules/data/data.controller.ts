@@ -7,11 +7,14 @@ import {
   HttpStatus,
   Query,
   Inject,
+  Header,
+  NotFoundException,
+  StreamableFile,
   Res,
 } from '@nestjs/common';
-
 import { DataService } from './data.service';
 import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
+import { encodeGetResponse, encodePaginatedResponse } from './proto/data.pb';
 import type { Response } from 'express';
 
 @Controller('')
@@ -194,7 +197,62 @@ export class DataController {
     };
   }
 
+  // @Get('category/:id/by-site/:siteCode/by-date')
+  // async getByCategoryAndSiteCodeByDate(
+  //   @Param('id') categoryId: number,
+  //   @Param('siteCode') siteCode: string,
+  //   @Query('start') start?: string,
+  //   @Query('end') end?: string,
+  //   @Query('sourceId') sourceId?: string,
+  // ) {
+  //   const parsedSourceId = sourceId ? parseInt(sourceId) : undefined;
+
+  //   const result = await this.dataService.findGroupsByCategoryAndSiteCodeByDate(
+  //     categoryId,
+  //     siteCode,
+  //     start ? new Date(start) : undefined,
+  //     end ? new Date(end) : undefined,
+  //     parsedSourceId,
+  //   );
+
+  //   return {
+  //     statusCode: 200,
+  //     ...result,
+  //   };
+  // }
+
+  // @Get('category/:id/by-site/:siteCode/by-date')
+  // @Header('Content-Type', 'application/x-protobuf')
+  // async getByCategoryAndSiteCodeByDate(
+  //   @Param('id') categoryId: number,
+  //   @Param('siteCode') siteCode: string,
+  //   @Query('start') start?: string,
+  //   @Query('end') end?: string,
+  //   @Query('sourceId') sourceId?: string,
+  // ): Promise<Uint8Array> {
+  //   const parsedSourceId = sourceId ? parseInt(sourceId, 10) : undefined;
+
+  //   const result = await this.dataService.findGroupsByCategoryAndSiteCodeByDate(
+  //     categoryId,
+  //     siteCode,
+  //     start ? new Date(start) : undefined,
+  //     end ? new Date(end) : undefined,
+  //     parsedSourceId,
+  //   );
+
+  //   const payload = {
+  //     statusCode: 200,
+  //     groups: result!.groups,
+  //     startDate: result!.startDate?.toISOString() ?? '',
+  //     endDate: result!.endDate?.toISOString() ?? '',
+  //     allDates: result!.allDates,
+  //   };
+
+  //   return encodeGetResponse(payload);
+  // }
+
   @Get('category/:id/by-site/:siteCode/by-date')
+  @Header('Content-Type', 'application/x-protobuf')
   async getByCategoryAndSiteCodeByDate(
     @Param('id') categoryId: number,
     @Param('siteCode') siteCode: string,
@@ -202,7 +260,7 @@ export class DataController {
     @Query('end') end?: string,
     @Query('sourceId') sourceId?: string,
   ) {
-    const parsedSourceId = sourceId ? parseInt(sourceId) : undefined;
+    const parsedSourceId = sourceId ? parseInt(sourceId, 10) : undefined;
 
     const result = await this.dataService.findGroupsByCategoryAndSiteCodeByDate(
       categoryId,
@@ -212,13 +270,29 @@ export class DataController {
       parsedSourceId,
     );
 
-    return {
+    if (!result) {
+      throw new NotFoundException();
+    }
+
+    const payload = {
       statusCode: 200,
-      ...result,
+      groups: result.groups.map((group) => ({
+        ...group,
+        date_utc: group.date_utc.toISOString(),
+      })),
+      startDate: result.startDate?.toISOString() ?? '',
+      endDate: result.endDate?.toISOString() ?? '',
+      allDates: {
+        minDate: new Date(result.allDates.minDate).toISOString(),
+        maxDate: new Date(result.allDates.maxDate).toISOString(),
+      },
     };
+
+    return new StreamableFile(encodeGetResponse(payload));
   }
 
   @Get('category/:id/by-site/:siteCode/paginated-date')
+  @Header('Content-Type', 'application/x-protobuf')
   async getByCategoryAndSiteCodePaginatedWithDate(
     @Param('id') categoryId: number,
     @Param('siteCode') siteCode: string,
@@ -230,9 +304,9 @@ export class DataController {
   ) {
     const pageNumber = Number(page) || 1;
     const limitNumber = Number(limit) || 20;
-    const parsedSourceId = sourceId ? parseInt(sourceId) : undefined;
+    const parsedSourceId = sourceId ? parseInt(sourceId, 10) : undefined;
 
-    const result =
+    const payload =
       await this.dataService.findGroupsByCategoryAndSiteCodePaginatedWithDate(
         categoryId,
         siteCode,
@@ -245,10 +319,11 @@ export class DataController {
         },
       );
 
-    return {
-      statusCode: 200,
-      data: result,
-    };
+    if (!payload) {
+      throw new NotFoundException();
+    }
+
+    return new StreamableFile(encodePaginatedResponse(payload));
   }
 
   @Post('category/:id/export/csv')
@@ -271,4 +346,58 @@ export class DataController {
     );
     res.send(csvData);
   }
+
+  // @Get('category/:id/by-site/:siteCode/paginated-date')
+  // async getByCategoryAndSiteCodePaginatedWithDate(
+  //   @Param('id') categoryId: number,
+  //   @Param('siteCode') siteCode: string,
+  //   @Query('page') page = '1',
+  //   @Query('limit') limit = '20',
+  //   @Query('start') start?: string,
+  //   @Query('end') end?: string,
+  //   @Query('sourceId') sourceId?: string,
+  // ) {
+  //   const pageNumber = Number(page) || 1;
+  //   const limitNumber = Number(limit) || 20;
+  //   const parsedSourceId = sourceId ? parseInt(sourceId) : undefined;
+
+  //   const result =
+  //     await this.dataService.findGroupsByCategoryAndSiteCodePaginatedWithDate(
+  //       categoryId,
+  //       siteCode,
+  //       {
+  //         page: pageNumber,
+  //         limit: limitNumber,
+  //         start: start ? new Date(start) : undefined,
+  //         end: end ? new Date(end) : undefined,
+  //         sourceId: parsedSourceId,
+  //       },
+  //     );
+
+  //   return {
+  //     statusCode: 200,
+  //     data: result,
+  //   };
+  // }
+
+  // @Post('category/:id/export/csv')
+  // async exportCsv(
+  //   @Param('id') categoryId: number,
+  //   @Body() body: { siteCode: string; startDate?: string; endDate?: string },
+  //   @Res() res: Response,
+  // ) {
+  //   const csvData = await this.dataService.generateCsv(
+  //     categoryId,
+  //     body.siteCode,
+  //     body.startDate ? new Date(body.startDate) : undefined,
+  //     body.endDate ? new Date(body.endDate) : undefined,
+  //   );
+
+  //   res.setHeader('Content-Type', 'text/csv');
+  //   res.setHeader(
+  //     'Content-Disposition',
+  //     `attachment; filename=export_${body.siteCode}.csv`,
+  //   );
+  //   res.send(csvData);
+  // }
 }

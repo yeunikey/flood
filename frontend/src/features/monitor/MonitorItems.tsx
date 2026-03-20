@@ -13,9 +13,9 @@ import Layer from "@/entities/layer/types/layer";
 import Site from "@/entities/site/types/site";
 import { useMonitorSites } from "./model/useMonitorSites";
 import PoolGroup from "./PoolGroup";
-import CategoryGroup from "./CategoryGroup";
 import { Geometry } from "geojson";
 import { useMonitorMap } from "./model/useMonitorMap";
+import CategoryGroup from "./CategoryGroup";
 
 function MonitorItems() {
   const { pools } = usePools();
@@ -266,6 +266,7 @@ function MonitorItems() {
               activeTooltipId={activeTooltipId}
               onTooltipToggle={handleTooltipToggle}
               standalone
+              category={layer.category}
             />
           ))}
         </div>

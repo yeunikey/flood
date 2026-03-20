@@ -1,3 +1,4 @@
+import { cn } from "@/shared/model/utils";
 
 interface LoadingProps {
     className?: string
@@ -5,8 +6,9 @@ interface LoadingProps {
 
 function Loading({ className }: LoadingProps) {
     return (
-        <div className={className}>
-            <div className="rounded-full w-8 h-8 border-blue-700 border-4 border-t-transparent animate-spin" />
+        <div className={cn('relative', className)}>
+            <div className="absolute rounded-full w-10 h-10 border-[#497ab3] border-6 border-t-transparent animate-spin" />
+            <div className="absolute rounded-full w-10 h-10 border-[#497ab3] border-6 opacity-5" />
         </div>
     );
 }

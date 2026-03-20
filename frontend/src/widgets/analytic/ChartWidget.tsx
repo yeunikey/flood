@@ -19,6 +19,7 @@ import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@/shared/model/auth";
 import {
   AnalyticSite,
+  FormattedGroup,
   useAnalyticSites,
 } from "@/features/analytic/model/useAnalyticSites";
 import { fetchChartData } from "@/features/analytic/model/fetchCategory";
@@ -28,60 +29,72 @@ import { api } from "@/shared/model/api/instance";
 import { ApiResponse } from "@/types";
 import Variable from "@/entities/variable/types/variable";
 import { Category } from "@/entities/category/types/categories";
-import { GroupedData } from "@/shared/model/types/response";
 
-const processData = (data: GroupedData[], variableId: number) => {
+const MAX_CHART_POINTS = 1500;
+
+const optimizeData = (dates: Date[], values: number[]) => {
+  if (values.length <= MAX_CHART_POINTS) {
+    return { optimizedDates: dates, optimizedValues: values };
+  }
+
+  const factor = Math.ceil(values.length / MAX_CHART_POINTS);
+  const optimizedDates: Date[] = [];
+  const optimizedValues: number[] = [];
+
+  for (let i = 0; i < values.length; i += factor) {
+    const chunkValues = values.slice(i, i + factor);
+    const chunkDates = dates.slice(i, i + factor);
+
+    const avgValue =
+      chunkValues.reduce((sum, val) => sum + val, 0) / chunkValues.length;
+    const midDate = chunkDates[Math.floor(chunkDates.length / 2)];
+
+    optimizedValues.push(avgValue);
+    optimizedDates.push(midDate);
+  }
+
+  return { optimizedDates, optimizedValues };
+};
+
+const processData = (data: FormattedGroup[], variableId: number) => {
   if (!data.length)
     return { dates: [], values: [], cleanValues: [], hasData: false };
 
-  const points = data
+  const finalDates: Date[] = [];
+  const finalValues: number[] = [];
+
+  data
     .map((d) => {
-      const valObj = d.values.find((v) => v.variable.id === variableId);
+      const vIndex = (d.variables ?? []).indexOf(variableId);
       let val: number | null = null;
-      if (valObj && valObj.value !== undefined && valObj.value !== "") {
-        const norm = String(valObj.value).replace(",", ".");
-        const num = Number(norm);
-        if (!isNaN(num)) val = num;
+
+      if (vIndex !== -1) {
+        const rawVal = d.values?.[vIndex];
+        if (rawVal !== undefined && rawVal !== "") {
+          const norm = String(rawVal).replace(",", ".");
+          const num = Number(norm);
+          if (!Number.isNaN(num)) val = num;
+        }
       }
+
       return {
-        time: new Date(d.group.date_utc).getTime(),
+        time: new Date(d.date_utc).getTime(),
         val,
       };
     })
-    .sort((a, b) => a.time - b.time);
-
-  let minDiff = Infinity;
-  for (let i = 1; i < points.length; i++) {
-    const diff = points[i].time - points[i - 1].time;
-    if (diff > 0 && diff < minDiff) minDiff = diff;
-  }
-
-  if (minDiff === Infinity) minDiff = 0;
-
-  const threshold = minDiff > 0 ? minDiff * 5 : Infinity;
-
-  const finalDates: Date[] = [];
-  const finalValues: (number | null)[] = [];
-  const cleanValues: number[] = [];
-
-  points.forEach((p, i) => {
-    if (i > 0 && minDiff > 0) {
-      const diff = p.time - points[i - 1].time;
-      if (diff > threshold) {
-        finalDates.push(new Date(points[i - 1].time + minDiff));
-        finalValues.push(null);
+    .sort((a, b) => a.time - b.time)
+    .forEach((p) => {
+      if (p.val !== null) {
+        finalDates.push(new Date(p.time));
+        finalValues.push(p.val);
       }
-    }
-    finalDates.push(new Date(p.time));
-    finalValues.push(p.val);
-    if (p.val !== null) cleanValues.push(p.val);
-  });
+    });
 
   return {
     dates: finalDates,
     values: finalValues,
-    cleanValues,
-    hasData: cleanValues.length > 0,
+    cleanValues: finalValues,
+    hasData: finalValues.length > 0,
   };
 };
 
@@ -134,7 +147,6 @@ const ChartItem = ({
     };
 
     fetchSources();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [category.id, site.code, token]);
 
   useEffect(() => {
@@ -164,7 +176,6 @@ const ChartItem = ({
 
       return () => controller.abort();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     token,
     fromDate?.getTime(),
@@ -181,7 +192,7 @@ const ChartItem = ({
     setSelectedSource(source);
   };
 
-  const data = site.chartResult || [];
+  const data = (site.chartResult as FormattedGroup[]) || [];
 
   if (site.chartLoading && data.length === 0) {
     return (
@@ -226,6 +237,10 @@ const ChartItem = ({
         if (!hasData) return null;
 
         const stats = calcStats(cleanValues);
+        const { optimizedDates, optimizedValues } = optimizeData(
+          dates,
+          numericValues
+        );
 
         return (
           <Paper
@@ -253,7 +268,7 @@ const ChartItem = ({
               <LineChart
                 xAxis={[
                   {
-                    data: dates,
+                    data: optimizedDates,
                     scaleType: "time",
                     valueFormatter: (date) =>
                       date.toLocaleString("ru-RU", {
@@ -267,10 +282,10 @@ const ChartItem = ({
                 ]}
                 series={[
                   {
-                    data: numericValues,
+                    data: optimizedValues,
                     label: `${variable.name} (${site.name})`,
                     showMark: false,
-                    connectNulls: false,
+                    connectNulls: true,
                   },
                 ]}
                 height={300}
@@ -325,7 +340,7 @@ function ChartWidget() {
             category={record.category}
             variables={record.variables}
           />
-        )),
+        ))
       )}
     </div>
   );

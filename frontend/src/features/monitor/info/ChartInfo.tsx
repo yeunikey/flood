@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/shared/model/auth";
 import { useMonitorStore } from "../model/useMontorStore";
@@ -30,6 +29,8 @@ import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import Variable from "@/entities/variable/types/variable";
 import DataSource from "@/entities/source/types/sources";
+import { FormattedGroup } from "@/features/analytic/model/useAnalyticSites";
+import { decodeGetResponse } from "@/features/analytic/model/data.pb";
 
 interface ChartValue {
   date: string;
@@ -51,29 +52,41 @@ interface VariablesResponse {
   sources: DataSource[];
 }
 
-interface GroupedData {
-  group: {
-    id: number;
-    date_utc: string;
-    category: { id: number; name: string };
-    site: { id: number; code: string; name: string };
-    source: DataSource;
-  };
-  values: {
-    id: number;
-    value: string;
-    variable: Variable;
-  }[];
-}
+const MAX_CHART_POINTS = 1500;
+
+const optimizeData = (dates: Date[], values: number[]) => {
+  if (values.length <= MAX_CHART_POINTS) {
+    return { optimizedDates: dates, optimizedValues: values };
+  }
+
+  const factor = Math.ceil(values.length / MAX_CHART_POINTS);
+  const optimizedDates: Date[] = [];
+  const optimizedValues: number[] = [];
+
+  for (let i = 0; i < values.length; i += factor) {
+    const chunkValues = values.slice(i, i + factor);
+    const chunkDates = dates.slice(i, i + factor);
+
+    const avgValue =
+      chunkValues.reduce((sum, val) => sum + val, 0) / chunkValues.length;
+    const midDate = chunkDates[Math.floor(chunkDates.length / 2)];
+
+    optimizedValues.push(avgValue);
+    optimizedDates.push(midDate);
+  }
+
+  return { optimizedDates, optimizedValues };
+};
 
 const calculateStats = (inputValues: number[]): Stats | null => {
   if (inputValues.length === 0) return null;
   const values = [...inputValues].sort((a, b) => a - b);
 
-  const sum = values.reduce((a, b) => a + b, 0);
+  const sum = values.reduce((a: number, b: number) => a + b, 0);
   const mean = sum / values.length;
-  const squareDiffs = values.map((v) => (v - mean) ** 2);
-  const avgSquareDiff = squareDiffs.reduce((a, b) => a + b, 0) / values.length;
+  const squareDiffs = values.map((v: number) => (v - mean) ** 2);
+  const avgSquareDiff =
+    squareDiffs.reduce((a: number, b: number) => a + b, 0) / values.length;
   const std = Math.sqrt(avgSquareDiff);
 
   const quantile = (q: number) => {
@@ -118,33 +131,7 @@ function ChartInfo() {
   const safeDate = (d: Date | string | null | undefined): Date | undefined => {
     if (!d) return undefined;
     const date = new Date(d);
-    return isNaN(date.getTime()) ? undefined : date;
-  };
-
-  const getMinFromDate = () => {
-    let min = safeDate(globalMin);
-    const currentTo = safeDate(toDate);
-    if (currentTo) {
-      const limitDate = new Date(currentTo);
-      limitDate.setFullYear(limitDate.getFullYear() - 10);
-      if (!min || limitDate > min) {
-        min = limitDate;
-      }
-    }
-    return min;
-  };
-
-  const getMaxToDate = () => {
-    let max = safeDate(globalMax);
-    const currentFrom = safeDate(fromDate);
-    if (currentFrom) {
-      const limitDate = new Date(currentFrom);
-      limitDate.setFullYear(limitDate.getFullYear() + 10);
-      if (!max || limitDate < max) {
-        max = limitDate;
-      }
-    }
-    return max;
+    return Number.isNaN(date.getTime()) ? undefined : date;
   };
 
   useEffect(() => {
@@ -169,8 +156,12 @@ function ChartInfo() {
 
         setVariables(data.data.variables);
         setAvailableSources(data.data.sources);
-      } catch (error: any) {
-        if (error.name !== "CanceledError" && error.name !== "AbortError") {
+      } catch (error: unknown) {
+        if (
+          error instanceof Error &&
+          error.name !== "CanceledError" &&
+          error.name !== "AbortError"
+        ) {
           console.error(error);
         }
       }
@@ -189,8 +180,6 @@ function ChartInfo() {
     const fetchCharts = async () => {
       if (fromDate && toDate) {
         if (fromDate > toDate) return;
-        const tenYearsMs = 10 * 365.25 * 24 * 60 * 60 * 1000;
-        if (toDate.getTime() - fromDate.getTime() > tenYearsMs) return;
       }
 
       setLoading(true);
@@ -200,28 +189,23 @@ function ChartInfo() {
         if (toDate) params.end = toDate.toISOString();
         if (selectedSource) params.sourceId = selectedSource.id.toString();
 
-        const res = await api.get<
-          ApiResponse<{
-            start: Date;
-            end: Date;
-            minDate: Date;
-            maxDate: Date;
-            total: number;
-            content: GroupedData[];
-          }>
-        >(
+        const res = await api.get(
           `/data/category/${selectedCategory.id}/by-site/${selectedSite.code}/by-date`,
           {
             headers: { Authorization: `Bearer ${token}` },
             params,
             signal: controller.signal,
+            responseType: "arraybuffer",
           },
         );
 
-        if (res.data?.data) {
-          const { maxDate, minDate, content } = res.data.data;
-          const maxD = new Date(maxDate);
-          const minD = new Date(minDate);
+        const decoded = decodeGetResponse(new Uint8Array(res.data));
+        const { allDates } = decoded;
+        const content = (decoded.groups || []) as unknown as FormattedGroup[];
+
+        if (allDates?.maxDate && allDates?.minDate) {
+          const maxD = new Date(allDates.maxDate);
+          const minD = new Date(allDates.minDate);
 
           setGlobalMax(maxD);
           setGlobalMin(minD);
@@ -232,48 +216,59 @@ function ChartInfo() {
             setFromDate(start);
             setToDate(maxD);
           }
-
-          if (content) {
-            if (!selectedSource && content.length > 0) {
-              const detectedSource = content[0].group.source;
-              if (detectedSource) {
-                setSelectedSource(detectedSource);
-              }
-            }
-
-            const newData: Record<number, ChartValue[]> = {};
-
-            content.forEach((groupItem) => {
-              const date = groupItem.group.date_utc;
-              groupItem.values.forEach((val) => {
-                const numVal = parseFloat(val.value.replace(",", "."));
-                if (!isNaN(numVal)) {
-                  if (!newData[val.variable.id]) {
-                    newData[val.variable.id] = [];
-                  }
-                  newData[val.variable.id].push({
-                    date,
-                    value: numVal,
-                  });
-                }
-              });
-            });
-
-            Object.keys(newData).forEach((key) => {
-              const varId = Number(key);
-              newData[varId].sort(
-                (a, b) =>
-                  new Date(a.date).getTime() - new Date(b.date).getTime(),
-              );
-            });
-
-            setChartData(newData);
-          } else {
-            setChartData({});
-          }
         }
-      } catch (error: any) {
-        if (error.name !== "CanceledError" && error.name !== "AbortError") {
+
+        if (content.length > 0) {
+          if (!selectedSource && availableSources.length > 0) {
+            const groupSourceName = content[0].source?.name;
+            const detectedSource = availableSources.find(
+              (s) => s.name === groupSourceName,
+            );
+            if (detectedSource) {
+              setSelectedSource(detectedSource);
+            }
+          }
+
+          const newData: Record<number, ChartValue[]> = {};
+
+          content.forEach((groupItem) => {
+            const date = groupItem.date_utc || "";
+            (groupItem.variables || []).forEach(
+              (varId: number, index: number) => {
+                const valStr = groupItem.values?.[index];
+                if (valStr !== undefined && valStr !== null && valStr !== "") {
+                  const numVal = parseFloat(String(valStr).replace(",", "."));
+                  if (!Number.isNaN(numVal)) {
+                    if (!newData[varId]) {
+                      newData[varId] = [];
+                    }
+                    newData[varId].push({
+                      date,
+                      value: numVal,
+                    });
+                  }
+                }
+              },
+            );
+          });
+
+          Object.keys(newData).forEach((key: string) => {
+            const varId = Number(key);
+            newData[varId].sort(
+              (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+            );
+          });
+
+          setChartData(newData);
+        } else {
+          setChartData({});
+        }
+      } catch (error: unknown) {
+        if (
+          error instanceof Error &&
+          error.name !== "CanceledError" &&
+          error.name !== "AbortError"
+        ) {
           console.error(error);
           setChartData({});
         }
@@ -295,6 +290,7 @@ function ChartInfo() {
     token,
     selectedSource,
     setSelectedSource,
+    availableSources,
   ]);
 
   const activeVariables = useMemo(
@@ -326,7 +322,7 @@ function ChartInfo() {
               <DatePicker
                 label="С"
                 value={fromDate}
-                minDate={getMinFromDate()}
+                minDate={safeDate(globalMin)}
                 maxDate={
                   !toDate
                     ? safeDate(globalMax) || undefined
@@ -344,7 +340,7 @@ function ChartInfo() {
                     ? safeDate(globalMin) || undefined
                     : safeDate(fromDate) || undefined
                 }
-                maxDate={getMaxToDate()}
+                maxDate={safeDate(globalMax)}
                 onChange={(newValue) => setToDate(newValue)}
                 slotProps={{ textField: { size: "small", sx: { width: 150 } } }}
               />
@@ -376,9 +372,14 @@ function ChartInfo() {
         <div className="flex-1 overflow-y-auto space-y-4 pr-2">
           {activeVariables.map((variable) => {
             const data = chartData[variable.id] || [];
-            const dates = data.map((d) => new Date(d.date));
-            const values = data.map((d) => d.value);
+            const dates = data.map((d: ChartValue) => new Date(d.date));
+            const values = data.map((d: ChartValue) => d.value);
+
             const stats = calculateStats(values);
+            const { optimizedDates, optimizedValues } = optimizeData(
+              dates,
+              values,
+            );
 
             return (
               <Paper
@@ -407,9 +408,9 @@ function ChartInfo() {
                     <LineChart
                       xAxis={[
                         {
-                          data: dates,
+                          data: optimizedDates,
                           scaleType: "time",
-                          valueFormatter: (date) =>
+                          valueFormatter: (date: Date) =>
                             date.toLocaleString("ru-RU", {
                               day: "2-digit",
                               month: "2-digit",
@@ -420,7 +421,7 @@ function ChartInfo() {
                       ]}
                       series={[
                         {
-                          data: values,
+                          data: optimizedValues,
                           label: variable.name,
                           showMark: false,
                           connectNulls: true,

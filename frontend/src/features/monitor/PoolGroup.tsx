@@ -47,7 +47,7 @@ const PoolGroup = ({
   return (
     <div>
       <ListItemButton
-        sx={{ pl: 3 }}
+        // sx={{ pl: 3 }}
         onClick={() => onToggleExpand(`pool-${pool.id}`)}
         selected={isExpanded}
       >
@@ -103,6 +103,7 @@ const PoolGroup = ({
               poolName={pool.name}
               activeTooltipId={activeTooltipId}
               onTooltipToggle={onTooltipToggle}
+              category={layer.category}
             />
           );
         })}

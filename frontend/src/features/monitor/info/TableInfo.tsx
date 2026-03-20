@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useAuth } from "@/shared/model/auth";
 import {
   Button,
@@ -22,7 +21,7 @@ import {
 import { useMonitorStore } from "../model/useMontorStore";
 import { api } from "@/shared/model/api/instance";
 import { useEffect, useState } from "react";
-import { ApiResponse, DataValue } from "@/types";
+import { ApiResponse } from "@/types";
 import TuneIcon from "@mui/icons-material/Tune";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import { useDisabledVariables } from "../model/useDisabledVariables";
@@ -31,23 +30,8 @@ import VariablesSettingsModal from "../modal/VariablesSettingsModal";
 import FullscreenTableModal from "../modal/FullscreenInfoModal";
 import DataSource from "@/entities/source/types/sources";
 import Variable from "@/entities/variable/types/variable";
-
-interface GroupedData {
-  group: {
-    id: number;
-    date_utc: string;
-    category: { id: number; name: string };
-    site: { id: number; code: string; name: string };
-  };
-  values: DataValue[];
-}
-interface PaginatedResult<T> {
-  content: T[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
+import { FormattedGroup } from "@/features/analytic/model/useAnalyticSites";
+import { decodePaginatedResponse } from "@/features/analytic/model/data.pb";
 
 function TableInfo() {
   const { disabledVariables } = useDisabledVariables();
@@ -62,7 +46,7 @@ function TableInfo() {
   const [infoVariables, setInfoVariables] = useState<Variable[]>([]);
   const [availableSources, setAvailableSources] = useState<DataSource[]>([]);
 
-  const [infoData, setInfoData] = useState<GroupedData[]>([]);
+  const [infoData, setInfoData] = useState<FormattedGroup[]>([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalRows, setTotalRows] = useState(0);
@@ -101,8 +85,12 @@ function TableInfo() {
             setSelectedSource(data.data.sources[0]);
           }
         }
-      } catch (error: any) {
-        if (error.name !== "CanceledError" && error.name !== "AbortError") {
+      } catch (error: unknown) {
+        if (
+          error instanceof Error &&
+          error.name !== "CanceledError" &&
+          error.name !== "AbortError"
+        ) {
           console.error(error);
         }
       }
@@ -129,18 +117,25 @@ function TableInfo() {
           params.sourceId = selectedSource.id;
         }
 
-        const res = await api.get<ApiResponse<PaginatedResult<GroupedData>>>(
-          `/data/category/${selectedCategory.id}/by-site/${selectedSite.code}/paginated`,
+        const res = await api.get(
+          `/data/category/${selectedCategory.id}/by-site/${selectedSite.code}/paginated-date`,
           {
             headers: { Authorization: `Bearer ${token}` },
             params,
             signal: controller.signal,
+            responseType: "arraybuffer",
           },
         );
-        setInfoData(res.data.data.content);
-        setTotalRows(res.data.data.total);
-      } catch (error: any) {
-        if (error.name !== "CanceledError" && error.name !== "AbortError") {
+
+        const decoded = decodePaginatedResponse(new Uint8Array(res.data));
+        setInfoData((decoded.content || []) as unknown as FormattedGroup[]);
+        setTotalRows(decoded.total || 0);
+      } catch (error: unknown) {
+        if (
+          error instanceof Error &&
+          error.name !== "CanceledError" &&
+          error.name !== "AbortError"
+        ) {
           console.error(error);
         }
       } finally {
@@ -291,40 +286,42 @@ function TableInfo() {
                   </TableHead>
                   <TableBody>
                     {infoData.map((group, i) => (
-                      <TableRow key={group.group.id} hover>
+                      <TableRow key={group.id} hover>
                         <TableCell align="center">
                           {page * rowsPerPage + i + 1}
                         </TableCell>
                         <TableCell sx={{ whiteSpace: "nowrap" }}>
-                          {new Date(group.group.date_utc).toLocaleString(
-                            "ru-RU",
-                            {
-                              day: "2-digit",
-                              month: "2-digit",
-                              year: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            },
-                          )}
+                          {new Date(group.date_utc).toLocaleString("ru-RU", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
                         </TableCell>
                         {(infoVariables || [])
                           .filter((v) => !disabledVariables.includes(v.id))
                           .map((variable) => {
-                            const value = group.values.find(
-                              (e) => e.variable.id === variable.id,
+                            const vIndex = (group.variables ?? []).indexOf(
+                              variable.id,
                             );
+                            const valStr =
+                              vIndex !== -1
+                                ? group.values?.[vIndex]
+                                : undefined;
+
                             return (
                               <TableCell
                                 key={variable.id}
                                 sx={{ whiteSpace: "nowrap" }}
                               >
-                                {value?.value !== undefined &&
-                                !isNaN(Number(value.value)) &&
-                                value.value !== ""
-                                  ? Number(value.value).toFixed(3) +
+                                {valStr !== undefined &&
+                                !isNaN(Number(valStr)) &&
+                                valStr !== ""
+                                  ? Number(valStr).toFixed(3) +
                                     " " +
-                                    value.variable.unit.symbol
-                                  : (value?.value ?? "-")}
+                                    variable.unit.symbol
+                                  : (valStr ?? "-")}
                               </TableCell>
                             );
                           })}

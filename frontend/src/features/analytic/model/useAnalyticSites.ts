@@ -3,17 +3,36 @@ import Pool from "@/entities/pool/types/pool";
 import Site from "@/entities/site/types/site";
 import Layer from "@/entities/layer/types/layer";
 import { Category } from "@/entities/category/types/categories";
-import { GroupedData, PaginatedResult } from "@/shared/model/types/response";
+import { PaginatedResult } from "@/shared/model/types/response";
 import useAnalyticStore from "@/features/analytic/model/useAnalyticStore";
 import Variable from "@/entities/variable/types/variable";
 
+export interface FormattedGroup {
+  id: number;
+  date_utc: string;
+  category: number;
+  site_code: string;
+  method: {
+    name: string;
+    description: string;
+  };
+  source: {
+    name: string;
+  };
+  qcl: {
+    name: string;
+    description: string;
+  };
+  variables: number[];
+  values: string[];
+}
+
 export type AnalyticSite = Site & {
-  result: PaginatedResult<GroupedData> | null;
+  result: PaginatedResult<FormattedGroup> | null;
   loading: boolean;
-
-  chartResult: GroupedData[] | null;
+  chartResult: FormattedGroup[] | null;
+  chartAllDates?: { minDate: string; maxDate: string } | null;
   chartLoading: boolean;
-
   category: Category;
   page: number;
   rowsPerPage: number;
@@ -28,45 +47,72 @@ export type SiteRecord = {
 type State = {
   activeSites: Record<number, SiteRecord>;
   activePools: Pool[];
-
   toggleSite: (category: Category, site: Site) => void;
   setAllSites: (sites: Record<number, SiteRecord>) => void;
   selectAll: (pools: Pool[], layers: Layer[]) => void;
   clearSites: () => void;
-
   setVariables: (categoryId: number, variables: Variable[]) => void;
-
   setSitePage: (categoryId: number, siteId: number, page: number) => void;
   setSiteRowsPerPage: (
     categoryId: number,
     siteId: number,
     rows: number,
   ) => void;
-
   setSiteResult: (
     categoryId: number,
     siteId: number,
-    result: PaginatedResult<GroupedData>,
+    result: PaginatedResult<FormattedGroup>,
   ) => void;
   setSiteLoading: (
     categoryId: number,
     siteId: number,
     loading: boolean,
   ) => void;
-
   setSiteChartResult: (
     categoryId: number,
     siteId: number,
-    result: GroupedData[],
+    result: FormattedGroup[],
+    allDates?: { minDate: string; maxDate: string },
   ) => void;
   setSiteChartLoading: (
     categoryId: number,
     siteId: number,
     loading: boolean,
   ) => void;
-
   setActivePools: (activePools: Pool[]) => void;
   togglePool: (pool: Pool) => void;
+};
+
+const updateGlobalRange = (activeSites: Record<number, SiteRecord>) => {
+  let min: Date | null = null;
+  let max: Date | null = null;
+
+  Object.values(activeSites).forEach((rec) => {
+    rec.sites.forEach((site) => {
+      const checkAndSet = (
+        minVal?: string | Date | null,
+        maxVal?: string | Date | null,
+      ) => {
+        if (minVal) {
+          const dMin = new Date(minVal);
+          if (!isNaN(dMin.getTime()) && (!min || dMin < min)) min = dMin;
+        }
+        if (maxVal) {
+          const dMax = new Date(maxVal);
+          if (!isNaN(dMax.getTime()) && (!max || dMax > max)) max = dMax;
+        }
+      };
+
+      if (site.result) {
+        checkAndSet(site.result.minDate, site.result.maxDate);
+      }
+      if (site.chartAllDates) {
+        checkAndSet(site.chartAllDates.minDate, site.chartAllDates.maxDate);
+      }
+    });
+  });
+
+  useAnalyticStore.getState().setGlobalRange(min, max);
 };
 
 export const useAnalyticSites = create<State>((set) => ({
@@ -89,6 +135,7 @@ export const useAnalyticSites = create<State>((set) => ({
               result: null,
               loading: false,
               chartResult: null,
+              chartAllDates: null,
               chartLoading: false,
               category,
               page: 0,
@@ -99,22 +146,26 @@ export const useAnalyticSites = create<State>((set) => ({
       if (newSites.length === 0) {
         const newActiveSites = { ...state.activeSites };
         delete newActiveSites[categoryId];
+        updateGlobalRange(newActiveSites);
         return { activeSites: newActiveSites };
       }
 
-      return {
-        activeSites: {
-          ...state.activeSites,
-          [categoryId]: {
-            category,
-            variables: currentRecord?.variables ?? [],
-            sites: newSites,
-          },
+      const newActiveSites = {
+        ...state.activeSites,
+        [categoryId]: {
+          category,
+          variables: currentRecord?.variables ?? [],
+          sites: newSites as AnalyticSite[],
         },
       };
+      updateGlobalRange(newActiveSites);
+      return { activeSites: newActiveSites };
     }),
 
-  setAllSites: (sites) => set({ activeSites: sites }),
+  setAllSites: (sites) => {
+    updateGlobalRange(sites);
+    set({ activeSites: sites });
+  },
 
   selectAll: (pools, layers) =>
     set(() => {
@@ -123,11 +174,7 @@ export const useAnalyticSites = create<State>((set) => ({
 
       const add = (category: Category, sites: Site[]) => {
         if (!newActiveSites[category.id]) {
-          newActiveSites[category.id] = {
-            category,
-            variables: [],
-            sites: [],
-          };
+          newActiveSites[category.id] = { category, variables: [], sites: [] };
         }
 
         sites.forEach((site) => {
@@ -139,6 +186,7 @@ export const useAnalyticSites = create<State>((set) => ({
               result: null,
               loading: false,
               chartResult: null,
+              chartAllDates: null,
               chartLoading: false,
               category,
               page: 0,
@@ -164,10 +212,14 @@ export const useAnalyticSites = create<State>((set) => ({
         if (standalones.length) add(l.category, standalones);
       });
 
+      updateGlobalRange(newActiveSites);
       return { activeSites: newActiveSites };
     }),
 
-  clearSites: () => set({ activeSites: {} }),
+  clearSites: () => {
+    useAnalyticStore.getState().setGlobalRange(null, null);
+    set({ activeSites: {} });
+  },
 
   setVariables: (categoryId, variables) =>
     set((state) => {
@@ -177,10 +229,7 @@ export const useAnalyticSites = create<State>((set) => ({
       return {
         activeSites: {
           ...state.activeSites,
-          [categoryId]: {
-            ...record,
-            variables,
-          },
+          [categoryId]: { ...record, variables },
         },
       };
     }),
@@ -193,7 +242,6 @@ export const useAnalyticSites = create<State>((set) => ({
       const updatedSites = record.sites.map((s) =>
         s.id === siteId ? { ...s, page } : s,
       );
-
       return {
         activeSites: {
           ...state.activeSites,
@@ -210,7 +258,6 @@ export const useAnalyticSites = create<State>((set) => ({
       const updatedSites = record.sites.map((s) =>
         s.id === siteId ? { ...s, rowsPerPage, page: 0 } : s,
       );
-
       return {
         activeSites: {
           ...state.activeSites,
@@ -227,40 +274,13 @@ export const useAnalyticSites = create<State>((set) => ({
       const updatedSites = record.sites.map((s) =>
         s.id === siteId ? { ...s, result } : s,
       );
-
       const newActiveSites = {
         ...state.activeSites,
         [categoryId]: { ...record, sites: updatedSites },
       };
 
-      let min: Date | null = null;
-      let max: Date | null = null;
-
-      Object.values(newActiveSites).forEach((rec) => {
-        rec.sites.forEach((site) => {
-          if (site.result) {
-            const siteMin = site.result.minDate
-              ? new Date(site.result.minDate)
-              : null;
-            const siteMax = site.result.maxDate
-              ? new Date(site.result.maxDate)
-              : null;
-
-            if (siteMin && (!min || siteMin < min)) {
-              min = siteMin;
-            }
-            if (siteMax && (!max || siteMax > max)) {
-              max = siteMax;
-            }
-          }
-        });
-      });
-
-      useAnalyticStore.getState().setGlobalRange(min, max);
-
-      return {
-        activeSites: newActiveSites,
-      };
+      updateGlobalRange(newActiveSites);
+      return { activeSites: newActiveSites };
     }),
 
   setSiteLoading: (categoryId, siteId, loading) =>
@@ -271,7 +291,6 @@ export const useAnalyticSites = create<State>((set) => ({
       const updatedSites = record.sites.map((s) =>
         s.id === siteId ? { ...s, loading } : s,
       );
-
       return {
         activeSites: {
           ...state.activeSites,
@@ -280,21 +299,24 @@ export const useAnalyticSites = create<State>((set) => ({
       };
     }),
 
-  setSiteChartResult: (categoryId, siteId, result) =>
+  setSiteChartResult: (categoryId, siteId, result, allDates) =>
     set((state) => {
       const record = state.activeSites[categoryId];
       if (!record) return state;
 
       const updatedSites = record.sites.map((s) =>
-        s.id === siteId ? { ...s, chartResult: result } : s,
+        s.id === siteId
+          ? { ...s, chartResult: result, chartAllDates: allDates || null }
+          : s,
       );
 
-      return {
-        activeSites: {
-          ...state.activeSites,
-          [categoryId]: { ...record, sites: updatedSites },
-        },
+      const newActiveSites = {
+        ...state.activeSites,
+        [categoryId]: { ...record, sites: updatedSites },
       };
+
+      updateGlobalRange(newActiveSites);
+      return { activeSites: newActiveSites };
     }),
 
   setSiteChartLoading: (categoryId, siteId, loading) =>
@@ -305,7 +327,6 @@ export const useAnalyticSites = create<State>((set) => ({
       const updatedSites = record.sites.map((s) =>
         s.id === siteId ? { ...s, chartLoading: loading } : s,
       );
-
       return {
         activeSites: {
           ...state.activeSites,

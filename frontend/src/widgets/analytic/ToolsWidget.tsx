@@ -1,9 +1,10 @@
 import { ShowChart } from "@mui/icons-material";
 import {
   Button,
-  Divider, ToggleButton,
+  Divider,
+  ToggleButton,
   ToggleButtonGroup,
-  Typography
+  Typography,
 } from "@mui/material";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
@@ -41,11 +42,6 @@ function ToolsWidget() {
 
     if (newFromDate && newToDate) {
       if (newFromDate > newToDate) return;
-
-      const tenYearsMs = 10 * 365.25 * 24 * 60 * 60 * 1000;
-      if (newToDate.getTime() - newFromDate.getTime() > tenYearsMs) {
-        return;
-      }
     }
 
     Object.values(activeSites).forEach((record) => {
@@ -60,37 +56,7 @@ function ToolsWidget() {
   const safeDate = (d: Date | string | null | undefined): Date | undefined => {
     if (!d) return undefined;
     const date = new Date(d);
-    return isNaN(date.getTime()) ? undefined : date;
-  };
-
-  const getMinFromDate = () => {
-    let min = safeDate(globalMinDate);
-    const currentTo = safeDate(toDate);
-
-    if (currentTo) {
-      const limitDate = new Date(currentTo);
-      limitDate.setFullYear(limitDate.getFullYear() - 10);
-
-      if (!min || limitDate > min) {
-        min = limitDate;
-      }
-    }
-    return min;
-  };
-
-  const getMaxToDate = () => {
-    let max = safeDate(globalMaxDate);
-    const currentFrom = safeDate(fromDate);
-
-    if (currentFrom) {
-      const limitDate = new Date(currentFrom);
-      limitDate.setFullYear(limitDate.getFullYear() + 10);
-
-      if (!max || limitDate < max) {
-        max = limitDate;
-      }
-    }
-    return max;
+    return Number.isNaN(date.getTime()) ? undefined : date;
   };
 
   return (
@@ -119,12 +85,8 @@ function ToolsWidget() {
               <DatePicker
                 label="дд.мм.гггг"
                 value={safeDate(fromDate) || null}
-                minDate={getMinFromDate()}
-                maxDate={
-                  !toDate
-                    ? safeDate(globalMaxDate) || undefined
-                    : safeDate(toDate) || undefined
-                }
+                minDate={safeDate(globalMinDate)}
+                maxDate={!toDate ? safeDate(globalMaxDate) : safeDate(toDate)}
                 onChange={(newValue: Date | null) => {
                   setFromDate(newValue);
                   handleDateChange(newValue, safeDate(toDate) || null);
@@ -140,12 +102,8 @@ function ToolsWidget() {
               <DatePicker
                 label="дд.мм.гггг"
                 value={safeDate(toDate) || null}
-                minDate={
-                  !fromDate
-                    ? safeDate(globalMinDate) || undefined
-                    : safeDate(fromDate) || undefined
-                }
-                maxDate={getMaxToDate()}
+                minDate={!fromDate ? safeDate(globalMinDate) : safeDate(fromDate)}
+                maxDate={safeDate(globalMaxDate)}
                 onChange={(newValue: Date | null) => {
                   setToDate(newValue);
                   handleDateChange(safeDate(fromDate) || null, newValue);
