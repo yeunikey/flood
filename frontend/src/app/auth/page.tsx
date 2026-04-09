@@ -4,7 +4,7 @@ import AuthWidget from "@/widgets/auth/AuthWidget";
 
 export default function AuthPage() {
   return (
-    <div className="flex h-screen w-full bg-white font-sans">
+    <div className="flex min-h-screen w-full overflow-hidden bg-white font-sans">
       <style>{`
         @keyframes flood {
           0% { transform: translateY(100%) scaleY(1); opacity: 0.4; }
@@ -30,7 +30,7 @@ export default function AuthPage() {
         <div className="absolute bottom-0 left-0 right-0 h-[120%] bg-gradient-to-t from-[#003B99] via-[#497ab3]/80 to-transparent animate-flood pointer-events-none"></div>
       </div>
 
-      <div className="fixed flex w-full h-full flex-col items-center justify-center">
+      <div className="relative z-10 flex min-h-screen w-full items-center justify-center px-4 py-8 sm:px-6">
         <AuthWidget />
       </div>
     </div>

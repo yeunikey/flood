@@ -1,7 +1,7 @@
 "use client";
 
 import View from "@/shared/ui/View";
-import { Tab, Tabs } from "@mui/material";
+import { Box, Tab, Tabs } from "@mui/material";
 import { useAuth } from "@/shared/model/auth";
 import UsersWidget from "@/widgets/admin/UsersWidgets";
 import { useRouter } from "next/navigation";
@@ -26,12 +26,19 @@ function AdminPage() {
   return (
     <View
       links={["Паводки", "Администрирование"]}
-      className="px-3 py-2 flex flex-col gap-3"
+      className="flex flex-col gap-3 px-3 py-2 sm:px-4"
     >
-      <Tabs value={0}>
-        <Tab label="Пользователи" />
-        <Tab label="Удаление данных" disabled />
-      </Tabs>
+      <Box sx={{ overflowX: "auto" }}>
+        <Tabs
+          value={0}
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
+        >
+          <Tab label="Пользователи" />
+          <Tab label="Удаление данных" disabled />
+        </Tabs>
+      </Box>
 
       <UsersWidget />
     </View>

@@ -36,7 +36,7 @@ function HecRasWidget() {
           color="primary"
           size="medium"
           onClick={() => setMobileListOpen(true)}
-          sx={{ position: "absolute", bottom: 16, right: 16, zIndex: 1000 }}
+          sx={{ position: "absolute", bottom: 72, right: 16, zIndex: 1000 }}
         >
           <FormatListBulletedIcon />
         </Fab>

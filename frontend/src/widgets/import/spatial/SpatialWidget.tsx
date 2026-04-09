@@ -61,8 +61,8 @@ export default function SpatialWidget() {
   };
 
   return (
-    <div className="flex flex-col h-full w-full p-4 gap-4">
-      <div className="flex justify-between items-center">
+    <div className="flex h-full w-full flex-col gap-4 p-4">
+      <div className="flex flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-center">
         <Typography variant="h6" fontWeight="medium">
           Пространственные данные
         </Typography>
@@ -70,6 +70,7 @@ export default function SpatialWidget() {
           variant="contained"
           startIcon={<AddIcon />}
           onClick={() => setCreateOpen(true)}
+          sx={{ width: { xs: "100%", sm: "auto" } }}
         >
           Создать
         </Button>
@@ -79,7 +80,7 @@ export default function SpatialWidget() {
         component={Paper}
         className="flex-1 overflow-auto shadow-sm rounded-lg! border border-gray-200"
       >
-        <Table stickyHeader>
+        <Table stickyHeader sx={{ minWidth: 720 }}>
           <TableHead>
             <TableRow>
               <TableCell width={50}>ID</TableCell>

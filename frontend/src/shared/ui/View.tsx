@@ -542,7 +542,12 @@ function View({ children, links, className }: ViewProps) {
             </Links>
           )}
 
-          <div className={cn("flex-1 relative min-h-0", className)}>
+          <div
+            className={cn(
+              "flex-1 relative min-h-0 pb-14 md:pb-0",
+              className,
+            )}
+          >
             {children}
           </div>
         </div>

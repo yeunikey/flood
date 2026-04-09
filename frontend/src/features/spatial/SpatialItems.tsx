@@ -6,7 +6,11 @@ import { useSpatialTiles } from "./model/useSpatialTiles";
 import Pool from "@/entities/pool/types/pool";
 import { useSpatial } from "@/entities/spatial/model/useSpatial";
 
-function SpatialItems() {
+interface SpatialItemsProps {
+  mobile?: boolean;
+}
+
+function SpatialItems({ mobile = false }: SpatialItemsProps) {
   const { pools } = usePools();
   const { spatials } = useSpatial();
 
@@ -60,7 +64,7 @@ function SpatialItems() {
   );
 
   return (
-    <div className="w-96 h-full flex flex-col">
+    <div className={mobile ? "flex h-full min-w-0 flex-col" : "flex h-full w-96 flex-col"}>
       <div className="flex-1 min-h-0 overflow-y-auto">
         <List dense className="pb-32!">
           {basinPools.map((pool) => (

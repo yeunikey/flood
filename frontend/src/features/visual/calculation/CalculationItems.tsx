@@ -14,7 +14,11 @@ import { usePools } from "@/entities/pool/model/usePools";
 import { Calculation, calculations } from "./model/calculations";
 import { useCalculationMap } from "./model/useCalculationMap";
 
-function CalculationItems() {
+interface CalculationItemsProps {
+  mobile?: boolean;
+}
+
+function CalculationItems({ mobile = false }: CalculationItemsProps) {
   const { pools } = usePools();
   const {
     activeCalculation,
@@ -129,7 +133,7 @@ function CalculationItems() {
   };
 
   return (
-    <div className="w-96 h-full flex flex-col">
+    <div className={mobile ? "flex h-full min-w-0 flex-col" : "flex h-full w-96 flex-col"}>
       <div className="flex-1 min-h-0 overflow-y-auto">
         {basinPools.length > 0 && (
           <>

@@ -92,19 +92,20 @@ export default function UsersWidget() {
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex min-h-0 flex-col gap-4">
       <div className="flex justify-end">
         <Button
           variant="contained"
           startIcon={<AddIcon />}
           onClick={() => setOpen(true)}
+          sx={{ width: { xs: "100%", sm: "auto" } }}
         >
           Создать пользователя
         </Button>
       </div>
 
-      <TableContainer component={Paper} variant="outlined">
-        <Table>
+      <TableContainer component={Paper} variant="outlined" sx={{ minWidth: 0 }}>
+        <Table sx={{ minWidth: 520 }}>
           <TableHead>
             <TableRow>
               <TableCell>ID</TableCell>
@@ -186,7 +187,7 @@ export default function UsersWidget() {
             </Select>
           </FormControl>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ px: 3, pb: 2, flexWrap: "wrap", gap: 1 }}>
           <Button onClick={() => setOpen(false)}>Отмена</Button>
           <Button
             variant="contained"

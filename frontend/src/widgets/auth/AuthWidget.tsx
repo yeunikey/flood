@@ -13,9 +13,14 @@ function AuthWidget() {
 
   return (
     <Grow in={true}>
-      <div className="w-full max-w-sm sm:max-w-lg min-h-[auto] bg-white rounded-3xl sm:rounded-4xl flex justify-center items-center py-10 mx-4 sm:mx-0">
-        <div className="w-full px-8 sm:w-80 sm:px-0">
-          <Typography variant="h5" textAlign={"center"} fontWeight={500}>
+      <div className="flex min-h-[auto] w-full max-w-sm justify-center rounded-3xl bg-white px-4 py-8 shadow-lg sm:max-w-lg sm:rounded-4xl sm:px-8 sm:py-10">
+        <div className="w-full sm:w-80">
+          <Typography
+            variant="h5"
+            textAlign={"center"}
+            fontWeight={500}
+            sx={{ fontSize: { xs: "1.35rem", sm: "1.5rem" } }}
+          >
             ГИС-сервис
           </Typography>
           <Typography
@@ -23,12 +28,13 @@ function AuthWidget() {
             color="grey.500"
             marginTop={1}
             textAlign={"center"}
+            sx={{ fontSize: { xs: "0.95rem", sm: "1rem" } }}
           >
             Заполните поля ниже для того, <br />
             чтобы войти в систему
           </Typography>
 
-          <div className="flex flex-col gap-2 my-12">
+          <div className="my-8 flex flex-col gap-3 sm:my-12">
             <TextField
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -46,7 +52,7 @@ function AuthWidget() {
               label="Пароль"
               variant="outlined"
               type="password"
-              size="small"
+              size="medium"
               placeholder="••••••••"
               className="text-sm"
             />
