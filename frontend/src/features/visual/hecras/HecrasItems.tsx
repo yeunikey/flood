@@ -102,7 +102,7 @@ function HecrasItems() {
   };
 
   return (
-    <div className="w-96 h-full flex flex-col">
+    <div className="w-full h-full flex flex-col overflow-hidden">
       <div className="flex-1 min-h-0 overflow-y-auto">
         {basinPools.length > 0 && (
           <>

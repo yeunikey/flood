@@ -13,8 +13,8 @@ function AuthWidget() {
 
   return (
     <Grow in={true}>
-      <div className="w-lg h-128 bg-white rounded-4xl flex justify-center items-center">
-        <div className="w-80">
+      <div className="w-full max-w-sm sm:max-w-lg min-h-[auto] bg-white rounded-3xl sm:rounded-4xl flex justify-center items-center py-10 mx-4 sm:mx-0">
+        <div className="w-full px-8 sm:w-80 sm:px-0">
           <Typography variant="h5" textAlign={"center"} fontWeight={500}>
             ГИС-сервис
           </Typography>

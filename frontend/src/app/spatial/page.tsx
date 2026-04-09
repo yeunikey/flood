@@ -28,7 +28,13 @@ function SpatialPage() {
     <View links={["Паводки", "Работа с пространственными данными"]}>
       <div className="flex flex-col h-full">
         <div className="py-2 pb-0 px-3">
-          <Tabs value={currentPage} onChange={handleChange}>
+          <Tabs
+            value={currentPage}
+            onChange={handleChange}
+            variant="scrollable"
+            scrollButtons="auto"
+            allowScrollButtonsMobile
+          >
             <Tab label="Экспорт из базы" />
             <Tab label="Экспорт из внешних источников" disabled />
           </Tabs>

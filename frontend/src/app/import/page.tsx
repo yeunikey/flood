@@ -52,8 +52,14 @@ export default function ImportPage() {
   return (
     <View links={["Паводки", "Импорт данных"]} className="flex flex-col">
       <div className="flex flex-col h-full w-full">
-        <div className="py-2 pb-0 px-3 flex-shrink-0">
-          <Tabs value={currentPage} onChange={handleChange}>
+        <div className="py-2 pb-0 px-3 flex-shrink-0 overflow-x-auto">
+          <Tabs
+            value={currentPage}
+            onChange={handleChange}
+            variant="scrollable"
+            scrollButtons="auto"
+            allowScrollButtonsMobile
+          >
             <Tab label="Табличные данные" />
             <Tab label="Пространственные данные" />
             <Tab label="Бассейны и категории" />

@@ -7,7 +7,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import TableRowsIcon from "@mui/icons-material/TableRows";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import TableInfo from "./info/TableInfo";
@@ -54,12 +54,35 @@ function SiteInfo() {
     document.removeEventListener("mouseup", handleMouseUp);
   };
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    isDragging.current = true;
+    startY.current = e.touches[0].clientY;
+    startHeight.current = height;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging.current) return;
+    const delta = startY.current - e.touches[0].clientY;
+    const newHeight = Math.max(
+      160,
+      Math.min(startHeight.current + delta, window.innerHeight - 120),
+    );
+    setHeight(newHeight);
+  };
+
+  const handleTouchEnd = () => {
+    isDragging.current = false;
+  };
+
   return (
     <div className="absolute bottom-0 left-0 right-0 z-[1000]">
       {selectedSite && (
         <div
           className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 border-gray-200 border-[1px] bg-white rounded-full p-0.5 cursor-row-resize z-[101] select-none shadow-sm"
           onMouseDown={handleMouseDown}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
         >
           <DragHandleIcon className="h-5! text-neutral-400 block" />
         </div>
@@ -78,6 +101,9 @@ function SiteInfo() {
           <div
             className="absolute top-0 left-0 right-0 h-1.5 cursor-row-resize hover:bg-gray-300/50 z-[101] transition-colors"
             onMouseDown={handleMouseDown}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
           />
 
           <Divider orientation="horizontal" />
@@ -105,15 +131,21 @@ function SiteInfo() {
               variant="scrollable"
               value={value}
               onChange={handleChange}
-              sx={{ borderRight: 1, borderColor: "divider", minWidth: "144px" }}
+              sx={{ borderRight: 1, borderColor: "divider", minWidth: { xs: "56px", sm: "144px" } }}
               className="py-3"
             >
               <Tab
                 label="Таблица"
                 icon={<TableRowsIcon />}
                 iconPosition="start"
+                sx={{ minWidth: 0, px: { xs: 1, sm: 2 }, "& .MuiTab-iconWrapper": { mr: { xs: 0, sm: 1 } } }}
               />
-              <Tab label="Чарты" icon={<BarChartIcon />} iconPosition="start" />
+              <Tab
+                label="Чарты"
+                icon={<BarChartIcon />}
+                iconPosition="start"
+                sx={{ minWidth: 0, px: { xs: 1, sm: 2 }, "& .MuiTab-iconWrapper": { mr: { xs: 0, sm: 1 } } }}
+              />
             </Tabs>
 
             <div className="flex-1 min-w-0 relative overflow-hidden flex flex-col p-4">

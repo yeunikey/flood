@@ -18,7 +18,7 @@ function SettingsWidget() {
 
     return (
         <Modal open={openSettings} onClose={() => setOpenSettings(false)}>
-            <ModalBox className="relative w-4xl! h-148 overflow-hidden">
+            <ModalBox className="relative w-4xl! max-h-[90dvh] overflow-hidden">
                 <div className="flex flex-col gap-2">
                     <Typography id="modal-modal-title" variant="h6" component="h2">
                         Настройки
@@ -27,8 +27,8 @@ function SettingsWidget() {
                     <Divider />
                 </div>
 
-                <div className="h-full w-full flex gap-6">
-                    <div className="min-w-72 space-y-1">
+                <div className="h-full w-full flex flex-col md:flex-row gap-6 overflow-hidden">
+                    <div className="flex flex-row md:flex-col md:min-w-72 gap-1 overflow-x-auto md:overflow-x-visible flex-shrink-0">
                         <ListItem disablePadding>
                             <ListItemButton
                                 className="rounded-2xl!"

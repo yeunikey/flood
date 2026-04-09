@@ -33,7 +33,13 @@ function SpatialPage() {
     <View links={["Паводки", "Прогнозы и сценарии"]}>
       <div className="flex flex-col h-full">
         <div className="py-2 pb-0 px-3">
-          <Tabs value={currentPage} onChange={handleChange}>
+          <Tabs
+            value={currentPage}
+            onChange={handleChange}
+            variant="scrollable"
+            scrollButtons="auto"
+            allowScrollButtonsMobile
+          >
             <Tab label="Сценарии HEC-RAS" />
             <Tab label="Прогнозы моделей" />
             <Tab label="Расчёты Q1" />
