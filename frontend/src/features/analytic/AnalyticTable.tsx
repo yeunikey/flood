@@ -111,7 +111,7 @@ function AnalyticTable({ selectedSite, selectedSourceId }: TableProps) {
             transition: "opacity 0.2s",
           }}
         >
-          <Table stickyHeader size="small">
+          <Table stickyHeader size="small" sx={{ minWidth: 640 }}>
             <TableHead>
               <TableRow>
                 <TableCell
@@ -204,7 +204,25 @@ function AnalyticTable({ selectedSite, selectedSourceId }: TableProps) {
         onRowsPerPageChange={handleChangeRowsPerPage}
         rowsPerPageOptions={[5, 10, 25, 50]}
         labelRowsPerPage="Строк:"
-        sx={{ borderTop: "1px solid #e0e0e0" }}
+        sx={{
+          borderTop: "1px solid #e0e0e0",
+          "& .MuiTablePagination-toolbar": {
+            flexWrap: "wrap",
+            justifyContent: { xs: "center", sm: "flex-end" },
+            gap: { xs: 0.5, sm: 0 },
+            px: { xs: 1, sm: 2 },
+          },
+          "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows":
+            {
+              my: { xs: 0.5, sm: 0 },
+            },
+          "& .MuiTablePagination-spacer": {
+            display: { xs: "none", sm: "block" },
+          },
+          "& .MuiTablePagination-actions": {
+            ml: { xs: 0, sm: 2 },
+          },
+        }}
       />
     </Paper>
   );

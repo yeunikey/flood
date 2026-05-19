@@ -61,12 +61,13 @@ function ToolsWidget() {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <div className="flex flex-wrap items-center justify-between gap-4 p-3">
-        <div className="flex flex-wrap items-center gap-6">
+      <div className="flex flex-col gap-3 p-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-6">
           <Button
             variant="outlined"
             startIcon={<TuneIcon />}
             onClick={() => setVariableCollapse(!variableCollapse)}
+            sx={{ width: { xs: "100%", lg: "auto" } }}
           >
             Переменные
           </Button>
@@ -77,9 +78,13 @@ function ToolsWidget() {
             className="hidden md:block"
           />
 
-          <div className="flex flex-wrap items-center gap-6">
-            <div className="flex items-center gap-3">
-              <Typography color="textSecondary" variant="body2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4 lg:gap-6">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+              <Typography
+                color="textSecondary"
+                variant="body2"
+                sx={{ flexShrink: 0 }}
+              >
                 от
               </Typography>
               <DatePicker
@@ -91,12 +96,21 @@ function ToolsWidget() {
                   setFromDate(newValue);
                   handleDateChange(newValue, safeDate(toDate) || null);
                 }}
-                slotProps={{ textField: { size: "small" } }}
+                slotProps={{
+                  textField: {
+                    size: "small",
+                    sx: { width: { xs: "100%", sm: 180 } },
+                  },
+                }}
               />
             </div>
 
-            <div className="flex items-center gap-3">
-              <Typography color="textSecondary" variant="body2">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+              <Typography
+                color="textSecondary"
+                variant="body2"
+                sx={{ flexShrink: 0 }}
+              >
                 до
               </Typography>
               <DatePicker
@@ -108,13 +122,18 @@ function ToolsWidget() {
                   setToDate(newValue);
                   handleDateChange(safeDate(fromDate) || null, newValue);
                 }}
-                slotProps={{ textField: { size: "small" } }}
+                slotProps={{
+                  textField: {
+                    size: "small",
+                    sx: { width: { xs: "100%", sm: 180 } },
+                  },
+                }}
               />
             </div>
           </div>
 
           {!showDependencies && (
-            <div className="">
+            <div className="w-full sm:w-auto">
               <ToggleButtonGroup
                 color="primary"
                 value={viewMode}
@@ -122,11 +141,13 @@ function ToolsWidget() {
                 onChange={(_, a) => setViewMode(a)}
                 aria-label="Platform"
                 size="small"
+                fullWidth
+                sx={{ width: { xs: "100%", sm: "auto" } }}
               >
-                <ToggleButton value="table" className="px-6!">
+                <ToggleButton value="table" className="px-6!" sx={{ flex: 1 }}>
                   Табличный
                 </ToggleButton>
-                <ToggleButton value="chart" className="px-6!">
+                <ToggleButton value="chart" className="px-6!" sx={{ flex: 1 }}>
                   График
                 </ToggleButton>
               </ToggleButtonGroup>
@@ -140,6 +161,7 @@ function ToolsWidget() {
           disableElevation
           onClick={() => setShowDependencies(!showDependencies)}
           color="primary"
+          sx={{ width: { xs: "100%", lg: "auto" } }}
         >
           {!showDependencies ? "Построить зависимости" : "Обратно"}
         </Button>

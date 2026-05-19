@@ -17,9 +17,12 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableContainer,
   TableHead,
   TableRow,
   Typography,
+  useMediaQuery,
+  useTheme,
   Zoom,
 } from "@mui/material";
 import TuneIcon from "@mui/icons-material/Tune";
@@ -127,6 +130,12 @@ function ChartInfo() {
   const [toDate, setToDate] = useState<Date | null>(null);
   const [globalMin, setGlobalMin] = useState<Date | null>(new Date());
   const [globalMax, setGlobalMax] = useState<Date | null>(new Date());
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const chartHeight = isMobile ? 240 : 300;
+  const chartMargin = isMobile
+    ? { left: 36, right: 12, top: 24, bottom: 36 }
+    : { left: 50, right: 30, top: 30, bottom: 30 };
 
   const safeDate = (d: Date | string | null | undefined): Date | undefined => {
     if (!d) return undefined;
@@ -307,18 +316,19 @@ function ChartInfo() {
   return (
     <Zoom in={true} timeout={600}>
       <div className="flex flex-col h-full w-full gap-4">
-        <div className="flex-none flex gap-4 items-center flex-wrap bg-white p-2 rounded-lg border border-gray-200">
+        <div className="flex-none flex flex-col gap-2 bg-white p-2 rounded-lg border border-gray-200 sm:flex-row sm:items-center sm:flex-wrap sm:gap-4">
           <Button
             variant="outlined"
             startIcon={<TuneIcon />}
             onClick={() => setSettingsOpen(true)}
             size="medium"
+            sx={{ width: { xs: "100%", sm: "auto" } }}
           >
             Переменные
           </Button>
 
           <LocalizationProvider dateAdapter={AdapterDateFns}>
-            <div className="flex gap-2 items-center">
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
               <DatePicker
                 label="С"
                 value={fromDate}
@@ -329,9 +339,14 @@ function ChartInfo() {
                     : safeDate(toDate) || undefined
                 }
                 onChange={(newValue) => setFromDate(newValue)}
-                slotProps={{ textField: { size: "small", sx: { width: 150 } } }}
+                slotProps={{
+                  textField: {
+                    size: "small",
+                    sx: { width: { xs: "100%", sm: 150 } },
+                  },
+                }}
               />
-              <span className="text-gray-400">—</span>
+              <span className="hidden text-gray-400 sm:inline">—</span>
               <DatePicker
                 label="По"
                 value={toDate}
@@ -342,12 +357,17 @@ function ChartInfo() {
                 }
                 maxDate={safeDate(globalMax)}
                 onChange={(newValue) => setToDate(newValue)}
-                slotProps={{ textField: { size: "small", sx: { width: 150 } } }}
+                slotProps={{
+                  textField: {
+                    size: "small",
+                    sx: { width: { xs: "100%", sm: 150 } },
+                  },
+                }}
               />
             </div>
           </LocalizationProvider>
 
-          <FormControl size="small" sx={{ minWidth: 150 }}>
+          <FormControl size="small" sx={{ width: { xs: "100%", sm: 150 } }}>
             <InputLabel>Источник</InputLabel>
             <Select
               value={selectedSource?.id ?? ""}
@@ -369,7 +389,7 @@ function ChartInfo() {
           variables={variables}
         />
 
-        <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+        <div className="flex-1 overflow-y-auto space-y-4 pr-0 sm:pr-2">
           {activeVariables.map((variable) => {
             const data = chartData[variable.id] || [];
             const dates = data.map((d: ChartValue) => new Date(d.date));
@@ -385,7 +405,7 @@ function ChartInfo() {
               <Paper
                 key={`${variable.id}-${selectedSite?.id}`}
                 elevation={0}
-                className="rounded-lg border border-gray-200 p-4 flex flex-col gap-4 relative"
+                className="rounded-lg border border-gray-200 p-3 flex flex-col gap-3 relative sm:p-4 sm:gap-4"
               >
                 {loading && (
                   <LinearProgress
@@ -399,11 +419,15 @@ function ChartInfo() {
                   />
                 )}
 
-                <Typography variant="h6" gutterBottom>
+                <Typography
+                  variant={isMobile ? "subtitle1" : "h6"}
+                  sx={{ overflowWrap: "anywhere" }}
+                  gutterBottom
+                >
                   {variable.name}
                 </Typography>
 
-                <div className="w-full h-[300px]">
+                <div className="w-full" style={{ height: chartHeight }}>
                   {data.length > 0 ? (
                     <LineChart
                       xAxis={[
@@ -428,8 +452,8 @@ function ChartInfo() {
                           color: "#1976d2",
                         },
                       ]}
-                      height={300}
-                      margin={{ left: 50, right: 30, top: 30, bottom: 30 }}
+                      height={chartHeight}
+                      margin={chartMargin}
                       key={`${variable.id}-${data.length}`}
                     />
                   ) : (
@@ -440,30 +464,36 @@ function ChartInfo() {
                 </div>
 
                 {stats && (
-                  <Table size="small" className="mt-2 border-t border-gray-100">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Mean</TableCell>
-                        <TableCell>Std</TableCell>
-                        <TableCell>Min</TableCell>
-                        <TableCell>25%</TableCell>
-                        <TableCell>50%</TableCell>
-                        <TableCell>75%</TableCell>
-                        <TableCell>Max</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      <TableRow>
-                        <TableCell>{stats.mean.toFixed(3)}</TableCell>
-                        <TableCell>{stats.std.toFixed(3)}</TableCell>
-                        <TableCell>{stats.min.toFixed(3)}</TableCell>
-                        <TableCell>{stats.p25.toFixed(3)}</TableCell>
-                        <TableCell>{stats.p50.toFixed(3)}</TableCell>
-                        <TableCell>{stats.p75.toFixed(3)}</TableCell>
-                        <TableCell>{stats.max.toFixed(3)}</TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
+                  <TableContainer sx={{ overflowX: "auto" }}>
+                    <Table
+                      size="small"
+                      className="mt-2 border-t border-gray-100"
+                      sx={{ minWidth: 560 }}
+                    >
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Mean</TableCell>
+                          <TableCell>Std</TableCell>
+                          <TableCell>Min</TableCell>
+                          <TableCell>25%</TableCell>
+                          <TableCell>50%</TableCell>
+                          <TableCell>75%</TableCell>
+                          <TableCell>Max</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        <TableRow>
+                          <TableCell>{stats.mean.toFixed(3)}</TableCell>
+                          <TableCell>{stats.std.toFixed(3)}</TableCell>
+                          <TableCell>{stats.min.toFixed(3)}</TableCell>
+                          <TableCell>{stats.p25.toFixed(3)}</TableCell>
+                          <TableCell>{stats.p50.toFixed(3)}</TableCell>
+                          <TableCell>{stats.p75.toFixed(3)}</TableCell>
+                          <TableCell>{stats.max.toFixed(3)}</TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
                 )}
               </Paper>
             );

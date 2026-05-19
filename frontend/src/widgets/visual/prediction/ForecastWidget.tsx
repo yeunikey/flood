@@ -16,7 +16,8 @@ import {
   TableRow,
   Paper,
   Box,
-  Chip,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import { Download } from "@mui/icons-material";
 
@@ -88,7 +89,7 @@ const QUANTILES = {
 const ForecastSummary = () => {
   return (
     <Card variant="outlined" sx={{ borderRadius: 2 }}>
-      <CardContent>
+      <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
         <Box
           display="flex"
           justifyContent="space-between"
@@ -104,7 +105,12 @@ const ForecastSummary = () => {
           Ед.изм: м³/с
         </Typography>
 
-        <Box display="grid" gridTemplateColumns="1fr 1fr" gap={2} mt={2}>
+        <Box
+          display="grid"
+          gridTemplateColumns={{ xs: "1fr", sm: "1fr 1fr" }}
+          gap={2}
+          mt={2}
+        >
           <Box
             sx={{
               bgcolor: "grey.50",
@@ -164,8 +170,8 @@ const ForecastSummary = () => {
 const ForecastTable = ({ data }: { data: ForecastDataPoint[] }) => {
   return (
     <Card variant="outlined" sx={{ borderRadius: 2, overflow: "hidden" }}>
-      <TableContainer component={Paper} elevation={0}>
-        <Table size="small">
+      <TableContainer component={Paper} elevation={0} sx={{ overflowX: "auto" }}>
+        <Table size="small" sx={{ minWidth: 420 }}>
           <TableHead sx={{ bgcolor: "grey.50" }}>
             <TableRow>
               <TableCell sx={{ fontWeight: "bold", color: "text.secondary" }}>
@@ -224,6 +230,12 @@ const ForecastTable = ({ data }: { data: ForecastDataPoint[] }) => {
 
 const ChartSection = () => {
   const [scale, setScale] = useState<"focus" | "full">("full");
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const chartHeight = isMobile ? 300 : 400;
+  const chartMargin = isMobile
+    ? { top: 44, right: 18, left: 38, bottom: 34 }
+    : { top: 40, right: 100, left: 50, bottom: 30 };
 
   return (
     <Card
@@ -235,9 +247,20 @@ const ChartSection = () => {
       }}
       elevation={0}
     >
-      <CardContent sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <Box mb={3} flexWrap="wrap" gap={2}>
-          <Typography variant="h6" fontWeight="bold">
+      <CardContent
+        sx={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          p: { xs: 2, sm: 3 },
+        }}
+      >
+        <Box mb={{ xs: 2, sm: 3 }} flexWrap="wrap" gap={2}>
+          <Typography
+            variant={isMobile ? "subtitle1" : "h6"}
+            fontWeight="bold"
+            sx={{ overflowWrap: "anywhere" }}
+          >
             Прогноз 7 дней
           </Typography>
           <Typography variant="body2" color="text.secondary">
@@ -249,7 +272,13 @@ const ChartSection = () => {
           </Typography>
         </Box>
 
-        <Box display="flex" alignItems="center" gap={2} mb={2}>
+        <Box
+          display="flex"
+          alignItems={{ xs: "stretch", sm: "center" }}
+          flexDirection={{ xs: "column", sm: "row" }}
+          gap={1.5}
+          mb={2}
+        >
           <Typography variant="body2" fontWeight="bold" color="text.secondary">
             Масштаб графика:
           </Typography>
@@ -259,7 +288,16 @@ const ChartSection = () => {
             exclusive
             onChange={(_, val) => val && setScale(val)}
             size="small"
-            sx={{ height: 32 }}
+            fullWidth
+            sx={{
+              height: { sm: 32 },
+              width: { xs: "100%", sm: "auto" },
+              "& .MuiToggleButton-root": {
+                flex: 1,
+                whiteSpace: "normal",
+                lineHeight: 1.2,
+              },
+            }}
           >
             <ToggleButton value="focus" sx={{ textTransform: "none", px: 2 }}>
               Фокус (по прогнозу)
@@ -274,11 +312,11 @@ const ChartSection = () => {
           sx={{
             flexGrow: 1,
             width: "100%",
-            height: 400,
+            height: chartHeight,
             border: 1,
             borderColor: "grey.200",
             borderRadius: 2,
-            p: 1,
+            p: { xs: 0.5, sm: 1 },
             position: "relative",
           }}
         >
@@ -287,7 +325,7 @@ const ChartSection = () => {
             sx={{
               position: "absolute",
               top: 10,
-              left: 10,
+              left: { xs: 8, sm: 10 },
               color: "text.secondary",
               zIndex: 1,
             }}
@@ -296,7 +334,8 @@ const ChartSection = () => {
           </Typography>
           <LineChart
             dataset={MOCK_DATA}
-            margin={{ top: 40, right: 100, left: 50, bottom: 30 }}
+            height={chartHeight}
+            margin={chartMargin}
             grid={{ horizontal: true }}
             xAxis={[
               {
@@ -355,7 +394,13 @@ const ChartSection = () => {
           </LineChart>
         </Box>
 
-        <Box display="flex" justifyContent="flex-end" gap={1.5} mt={2}>
+        <Box
+          display="flex"
+          justifyContent="flex-end"
+          gap={1.5}
+          mt={2}
+          sx={{ "& .MuiButton-root": { width: { xs: "100%", sm: "auto" } } }}
+        >
           <Button
             variant="outlined"
             color="inherit"
@@ -377,17 +422,17 @@ const ChartSection = () => {
 
 export default function ForecastWidget() {
   return (
-    <div className="p-3">
+    <div className="p-2 sm:p-3">
       <Box sx={{ maxWidth: 1600, mx: "auto" }}>
         <Box
           sx={{
             display: "grid",
             gridTemplateColumns: { xs: "1fr", lg: "2fr 1fr" },
-            gap: 3,
+            gap: { xs: 2, sm: 3 },
           }}
         >
           <ChartSection />
-          <Box display="flex" flexDirection="column" gap={3}>
+          <Box display="flex" flexDirection="column" gap={{ xs: 2, sm: 3 }}>
             <ForecastSummary />
             <ForecastTable data={MOCK_DATA} />
           </Box>

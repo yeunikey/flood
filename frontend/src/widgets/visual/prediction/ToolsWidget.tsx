@@ -41,16 +41,15 @@ function ToolsWidget() {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <div className="flex flex-wrap items-center justify-between gap-4 p-3">
-        <div className="flex flex-wrap items-center gap-6">
-          <FormControl size="small" sx={{ minWidth: 150 }}>
+      <div className="flex flex-col gap-3 p-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-6">
+          <FormControl size="small" sx={{ width: { xs: "100%", lg: 192 } }}>
             <InputLabel id="variable-select-label">Переменная</InputLabel>
             <Select
               labelId="variable-select-label"
               value={variable}
               label="Переменная"
               onChange={handleVariableChange}
-              className="w-48"
             >
               <MenuItem value="var1">Переменная 1</MenuItem>
               <MenuItem value="var2">Переменная 2</MenuItem>
@@ -64,18 +63,20 @@ function ToolsWidget() {
             className="hidden md:block"
           />
 
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
             <ToggleButtonGroup
               color="primary"
               value={dateMode}
               exclusive
               onChange={handleModeChange}
               size="small"
+              fullWidth
+              sx={{ width: { xs: "100%", sm: "auto" } }}
             >
-              <ToggleButton value="single" className="px-4!">
+              <ToggleButton value="single" className="px-4!" sx={{ flex: 1 }}>
                 День
               </ToggleButton>
-              <ToggleButton value="range" className="px-4!">
+              <ToggleButton value="range" className="px-4!" sx={{ flex: 1 }}>
                 Период
               </ToggleButton>
             </ToggleButtonGroup>
@@ -85,25 +86,42 @@ function ToolsWidget() {
                 label="Дата"
                 value={singleDate}
                 onChange={(newValue) => setSingleDate(newValue)}
-                slotProps={{ textField: { size: "small", sx: { width: 160 } } }}
+                slotProps={{
+                  textField: {
+                    size: "small",
+                    sx: { width: { xs: "100%", sm: 160 } },
+                  },
+                }}
               />
             ) : (
-              <Box display="flex" alignItems="center" gap={1}>
+              <Box
+                display="flex"
+                alignItems={{ xs: "stretch", sm: "center" }}
+                flexDirection={{ xs: "column", sm: "row" }}
+                gap={1}
+                width={{ xs: "100%", sm: "auto" }}
+              >
                 <DatePicker
                   label="С"
                   value={startDate}
                   onChange={(newValue) => setStartDate(newValue)}
                   slotProps={{
-                    textField: { size: "small", sx: { width: 160 } },
+                    textField: {
+                      size: "small",
+                      sx: { width: { xs: "100%", sm: 160 } },
+                    },
                   }}
                 />
-                <Typography>-</Typography>
+                <Typography className="hidden sm:block">-</Typography>
                 <DatePicker
                   label="По"
                   value={endDate}
                   onChange={(newValue) => setEndDate(newValue)}
                   slotProps={{
-                    textField: { size: "small", sx: { width: 160 } },
+                    textField: {
+                      size: "small",
+                      sx: { width: { xs: "100%", sm: 160 } },
+                    },
                   }}
                 />
               </Box>
@@ -116,6 +134,7 @@ function ToolsWidget() {
           startIcon={<ShowChart />}
           disableElevation
           sx={{
+            width: { xs: "100%", lg: "auto" },
             bgcolor: "#1976d2",
             fontWeight: 500,
             "&:hover": { bgcolor: "#1565c0" },

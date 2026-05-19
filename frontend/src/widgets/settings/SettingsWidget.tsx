@@ -18,8 +18,8 @@ function SettingsWidget() {
 
     return (
         <Modal open={openSettings} onClose={() => setOpenSettings(false)}>
-            <ModalBox className="relative w-4xl! max-h-[90dvh] overflow-hidden">
-                <div className="flex flex-col gap-2">
+            <ModalBox className="relative w-4xl! h-[78dvh] max-h-[78dvh] overflow-hidden">
+                <div className="flex flex-col gap-2 flex-none">
                     <Typography id="modal-modal-title" variant="h6" component="h2">
                         Настройки
                     </Typography>
@@ -27,7 +27,7 @@ function SettingsWidget() {
                     <Divider />
                 </div>
 
-                <div className="h-full w-full flex flex-col md:flex-row gap-6 overflow-hidden">
+                <div className="min-h-0 flex-1 w-full flex flex-col md:flex-row gap-4 md:gap-6 overflow-hidden">
                     <div className="flex flex-row md:flex-col md:min-w-72 gap-1 overflow-x-auto md:overflow-x-visible flex-shrink-0">
                         <ListItem disablePadding>
                             <ListItemButton
@@ -81,7 +81,7 @@ function SettingsWidget() {
                         </ListItem>
                     </div>
 
-                    <div className="h-full w-full flex flex-col gap-6 overflow-y-scroll pb-64">
+                    <div className="min-h-0 h-full w-full flex flex-col gap-6 overflow-y-auto pr-1 pb-4">
                         {active == "map" && (<MapSettings />)}
                         {active == "security" && (<SecuritySettings />)}
                         {active == "image" && (<ImageSettings />)}

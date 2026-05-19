@@ -81,15 +81,19 @@ function SiteRow({
   };
 
   return (
-    <div className="space-y-2! max-w-full">
-      <div className="flex items-center justify-between gap-6">
-        <Typography variant="h6" fontWeight={500}>
+    <div className="space-y-2! max-w-full min-w-0">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+        <Typography
+          variant="h6"
+          fontWeight={500}
+          sx={{ overflowWrap: "anywhere" }}
+        >
           {site.name}
         </Typography>
 
-        <div className="flex items-center gap-3">
+        <div className="flex w-full flex-row flex-wrap items-center justify-end gap-2 sm:w-auto sm:flex-nowrap sm:gap-3">
           {availableSources.length > 0 && (
-            <FormControl size="small" sx={{ minWidth: 200 }}>
+            <FormControl size="small" sx={{ width: { xs: "100%", sm: 200 } }}>
               <InputLabel>Источник</InputLabel>
               <Select
                 value={selectedSource?.id ?? ""}
@@ -195,10 +199,14 @@ function TablesWidget() {
 
   return (
     <>
-      <div className="p-3 pt-6 mb-24 space-y-12! w-full max-w-full">
+      <div className="p-2 pt-4 mb-24 space-y-8! w-full max-w-full sm:p-3 sm:pt-6 sm:space-y-12!">
         {categories.map(([catId, record]) => (
           <div key={catId} className="space-y-6!">
-            <Typography variant="h5" fontWeight={500}>
+            <Typography
+              variant="h5"
+              fontWeight={500}
+              sx={{ overflowWrap: "anywhere" }}
+            >
               {record.category.name}
             </Typography>
 

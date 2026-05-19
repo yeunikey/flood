@@ -5,6 +5,7 @@ import {
   TableRow,
   TableCell,
   TableBody,
+  TableContainer,
   Paper,
   LinearProgress,
   FormControl,
@@ -12,6 +13,8 @@ import {
   Select,
   MenuItem,
   SelectChangeEvent,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import { LineChart } from "@mui/x-charts/LineChart";
 import useAnalyticStore from "@/features/analytic/model/useAnalyticStore";
@@ -111,6 +114,12 @@ const ChartItem = ({
   const { isVariableDisabled, fromDate, toDate } = useAnalyticStore();
   const [availableSources, setAvailableSources] = useState<DataSource[]>([]);
   const [selectedSource, setSelectedSource] = useState<DataSource | null>(null);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const chartHeight = isMobile ? 240 : 300;
+  const chartMargin = isMobile
+    ? { left: 36, right: 12, top: 24, bottom: 36 }
+    : { left: 50, right: 30, top: 30, bottom: 30 };
 
   const prevFetchParams = useRef<{
     from: number | undefined;
@@ -196,7 +205,7 @@ const ChartItem = ({
 
   if (site.chartLoading && data.length === 0) {
     return (
-      <Paper className="p-4 rounded-lg">
+      <Paper className="p-3 rounded-lg sm:p-4">
         <Typography>{site.name} — Загрузка...</Typography>
         <LinearProgress className="mt-2" />
       </Paper>
@@ -206,9 +215,12 @@ const ChartItem = ({
   if (data.length === 0 && !site.chartLoading) return null;
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-end">
-        <FormControl size="small" sx={{ minWidth: 200, bgcolor: "white" }}>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex justify-stretch sm:justify-end">
+        <FormControl
+          size="small"
+          sx={{ width: { xs: "100%", sm: 200 }, bgcolor: "white" }}
+        >
           <InputLabel>Источник</InputLabel>
           <Select
             value={selectedSource?.id ?? ""}
@@ -246,7 +258,7 @@ const ChartItem = ({
           <Paper
             key={`${category.id}-${site.id}-${variable.id}`}
             elevation={0}
-            className="rounded-lg border border-gray-200 p-4 flex flex-col gap-4 relative"
+            className="rounded-lg border border-gray-200 p-3 flex flex-col gap-3 relative sm:p-4 sm:gap-4"
           >
             {site.chartLoading && (
               <LinearProgress
@@ -260,11 +272,15 @@ const ChartItem = ({
               />
             )}
 
-            <Typography variant="h6" gutterBottom>
+            <Typography
+              variant={isMobile ? "subtitle1" : "h6"}
+              sx={{ overflowWrap: "anywhere" }}
+              gutterBottom
+            >
               {variable.name} — {site.name}
             </Typography>
 
-            <div className="w-full h-[300px]">
+            <div className="w-full" style={{ height: chartHeight }}>
               <LineChart
                 xAxis={[
                   {
@@ -288,36 +304,38 @@ const ChartItem = ({
                     connectNulls: true,
                   },
                 ]}
-                height={300}
-                margin={{ left: 50, right: 30, top: 30, bottom: 30 }}
+                height={chartHeight}
+                margin={chartMargin}
               />
             </div>
 
             {stats && (
-              <Table size="small" className="mt-2">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Mean</TableCell>
-                    <TableCell>Std</TableCell>
-                    <TableCell>Min</TableCell>
-                    <TableCell>25%</TableCell>
-                    <TableCell>50%</TableCell>
-                    <TableCell>75%</TableCell>
-                    <TableCell>Max</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  <TableRow>
-                    <TableCell>{stats.mean.toFixed(3)}</TableCell>
-                    <TableCell>{stats.std.toFixed(3)}</TableCell>
-                    <TableCell>{stats.min}</TableCell>
-                    <TableCell>{stats.p25.toFixed(3)}</TableCell>
-                    <TableCell>{stats.p50.toFixed(3)}</TableCell>
-                    <TableCell>{stats.p75.toFixed(3)}</TableCell>
-                    <TableCell>{stats.max}</TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
+              <TableContainer sx={{ overflowX: "auto" }}>
+                <Table size="small" className="mt-2" sx={{ minWidth: 560 }}>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Mean</TableCell>
+                      <TableCell>Std</TableCell>
+                      <TableCell>Min</TableCell>
+                      <TableCell>25%</TableCell>
+                      <TableCell>50%</TableCell>
+                      <TableCell>75%</TableCell>
+                      <TableCell>Max</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell>{stats.mean.toFixed(3)}</TableCell>
+                      <TableCell>{stats.std.toFixed(3)}</TableCell>
+                      <TableCell>{stats.min}</TableCell>
+                      <TableCell>{stats.p25.toFixed(3)}</TableCell>
+                      <TableCell>{stats.p50.toFixed(3)}</TableCell>
+                      <TableCell>{stats.p75.toFixed(3)}</TableCell>
+                      <TableCell>{stats.max}</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </TableContainer>
             )}
           </Paper>
         );
@@ -331,7 +349,7 @@ function ChartWidget() {
   const records = Object.values(activeSites);
 
   return (
-    <div className="p-3 pt-6 mb-24 space-y-12! w-full max-w-full">
+    <div className="p-2 pt-4 mb-24 space-y-8! w-full max-w-full sm:p-3 sm:pt-6 sm:space-y-12!">
       {records.map((record) =>
         record.sites.map((site) => (
           <ChartItem

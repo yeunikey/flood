@@ -4,6 +4,7 @@ import QueryStatsIcon from "@mui/icons-material/QueryStats";
 import SupervisorAccountIcon from "@mui/icons-material/SupervisorAccount";
 import TimelineIcon from "@mui/icons-material/Timeline";
 import TravelExploreIcon from "@mui/icons-material/TravelExplore";
+import AssessmentIcon from "@mui/icons-material/Assessment";
 
 const ways = [
   {
@@ -41,6 +42,12 @@ const ways = [
     text: "Администрирование",
     icon: <SupervisorAccountIcon />,
     path: "/admin",
+  },
+  null,
+  {
+    text: "Статистика",
+    icon: <AssessmentIcon />,
+    path: "/statistics",
   },
 ];
 

@@ -56,12 +56,32 @@ interface UploadChunkPayloadDto {
   chunks: DataRowDto[];
 }
 
+const DATA_STATS_CACHE_KEY = 'data:stats';
+const DATA_STATS_CACHE_TTL = 5 * 60 * 1000;
+
 export interface PaginatedResult<T> {
   content: T[];
   total: number;
   page: number;
   limit: number;
   totalPages: number;
+}
+
+export interface DataStats {
+  dataValues: number;
+  variables: number;
+  categories: number;
+  groups: number;
+  byCategory: CategoryStats[];
+}
+
+export interface CategoryStats {
+  categoryId: number;
+  categoryName: string;
+  groupsCount: number;
+  valuesCount: number;
+  variablesCount: number;
+  lastDate: string | null;
 }
 
 @Injectable()
@@ -123,6 +143,7 @@ export class DataService {
     }
 
     await this.groupRepo.query(`SET session_replication_role = DEFAULT`);
+    await this.clearStatsCache();
 
     console.log('Удаление завершено');
   }
@@ -190,6 +211,8 @@ export class DataService {
         await manager.getRepository(DataValue).insert(valuesToInsert);
       }
     });
+
+    await this.clearStatsCache();
   }
 
   async findCategoryById(id: number) {
@@ -219,8 +242,83 @@ export class DataService {
     return this.groupRepo.find();
   }
 
+  async getStats(): Promise<DataStats> {
+    const cached = await this.cacheManager.get<DataStats>(DATA_STATS_CACHE_KEY);
+
+    if (cached) {
+      return cached;
+    }
+
+    const [dataValues, variables, categories, groups, byCategory] =
+      await Promise.all([
+        this.dataValueRepo.count(),
+        this.variableRepo.count(),
+        this.categoryRepo.count(),
+        this.groupRepo.count(),
+        this.getCategoryStats(),
+      ]);
+
+    const stats = {
+      dataValues,
+      variables,
+      categories,
+      groups,
+      byCategory,
+    };
+
+    await this.cacheManager.set(
+      DATA_STATS_CACHE_KEY,
+      stats,
+      DATA_STATS_CACHE_TTL,
+    );
+
+    return stats;
+  }
+
+  private async getCategoryStats(): Promise<CategoryStats[]> {
+    const rawStats = await this.categoryRepo
+      .createQueryBuilder('category')
+      .leftJoin(Group, 'grp', 'grp.category_id = category.id')
+      .leftJoin(DataValue, 'dataValue', 'dataValue.group_id = grp.id')
+      .select('category.id', 'categoryId')
+      .addSelect('category.name', 'categoryName')
+      .addSelect('COUNT(DISTINCT grp.id)', 'groupsCount')
+      .addSelect('COUNT(dataValue.id)', 'valuesCount')
+      .addSelect('COUNT(DISTINCT dataValue.variable_id)', 'variablesCount')
+      .addSelect('MAX(grp.date_utc)', 'lastDate')
+      .groupBy('category.id')
+      .addGroupBy('category.name')
+      .orderBy('category.name', 'ASC')
+      .getRawMany<{
+        categoryId: string | number;
+        categoryName: string;
+        groupsCount: string;
+        valuesCount: string;
+        variablesCount: string;
+        lastDate: Date | string | null;
+      }>();
+
+    return rawStats.map((category) => ({
+      categoryId: Number(category.categoryId),
+      categoryName: category.categoryName,
+      groupsCount: Number(category.groupsCount),
+      valuesCount: Number(category.valuesCount),
+      variablesCount: Number(category.variablesCount),
+      lastDate: category.lastDate
+        ? new Date(category.lastDate).toISOString()
+        : null,
+    }));
+  }
+
   async createCategory(category: DeepPartial<Category>) {
-    return this.categoryRepo.save(category);
+    const savedCategory = await this.categoryRepo.save(category);
+    await this.clearStatsCache();
+
+    return savedCategory;
+  }
+
+  private async clearStatsCache() {
+    await this.cacheManager.del(DATA_STATS_CACHE_KEY);
   }
 
   async getVariablesByCategory(

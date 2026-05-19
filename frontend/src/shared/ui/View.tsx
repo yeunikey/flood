@@ -2,7 +2,12 @@
 
 import * as React from "react";
 
-import { AppBar, Drawer, DrawerHeader } from "@/shared/model/mixin/view";
+import {
+  AppBar,
+  Drawer,
+  DrawerHeader,
+  drawerWidth,
+} from "@/shared/model/mixin/view";
 import {
   Avatar,
   BottomNavigation,
@@ -67,6 +72,9 @@ interface SearchOption {
   id: number;
 }
 
+type NavItem = NonNullable<(typeof ways)[number]>;
+type NavGroup = NavItem[] | null;
+
 function View({ children, links, className }: ViewProps) {
   const theme = useTheme();
   const router = useRouter();
@@ -124,7 +132,6 @@ function View({ children, links, className }: ViewProps) {
     router.push("/auth");
   };
 
-  // Filter navigation items for bottom nav (exclude null separators and restricted items)
   const bottomNavItems = React.useMemo(() => {
     return ways
       .filter((item) => {
@@ -140,12 +147,10 @@ function View({ children, links, className }: ViewProps) {
       .slice(0, 5) as NonNullable<(typeof ways)[number]>[];
   }, [user]);
 
-  // Current bottom nav value
   const bottomNavValue = bottomNavItems.findIndex(
     (item) => item.path === pathname
   );
 
-  // Mobile Drawer content
   const mobileDrawerContent = (
     <Box sx={{ width: 280, pt: 2 }} role="presentation">
       <Box sx={{ px: 2, pb: 1 }}>
@@ -155,8 +160,8 @@ function View({ children, links, className }: ViewProps) {
       </Box>
       <Divider />
       {(() => {
-        const groups: ((typeof ways)[number][] | null)[] = [];
-        let currentGroup: (typeof ways)[number][] = [];
+        const groups: NavGroup[] = [];
+        let currentGroup: NavItem[] = [];
 
         ways.forEach((item) => {
           if (item === null) {
@@ -451,8 +456,8 @@ function View({ children, links, className }: ViewProps) {
         <Divider />
 
         {(() => {
-          const groups: ((typeof ways)[number][] | null)[] = [];
-          let currentGroup: (typeof ways)[number][] = [];
+          const groups: NavGroup[] = [];
+          let currentGroup: NavItem[] = [];
 
           ways.forEach((item) => {
             if (item === null) {
@@ -485,8 +490,7 @@ function View({ children, links, className }: ViewProps) {
                     disablePadding
                     sx={{ display: "block" }}
                     onClick={() => {
-                      if (!item) return;
-                      router.push(item?.path);
+                      router.push(item.path);
                     }}
                   >
                     <ListItemButton
@@ -501,10 +505,10 @@ function View({ children, links, className }: ViewProps) {
                           open ? { mr: 3 } : { mr: "auto" },
                         ]}
                       >
-                        {item?.icon}
+                        {item.icon}
                       </ListItemIcon>
                       <ListItemText
-                        primary={item?.text}
+                        primary={item.text}
                         sx={[open ? { opacity: 1 } : { opacity: 0 }]}
                       />
                     </ListItemButton>
@@ -523,6 +527,22 @@ function View({ children, links, className }: ViewProps) {
           flex: 1,
           overflow: "hidden",
           flexDirection: "column",
+          ml: {
+            xs: 0,
+            md: open ? `${drawerWidth}px` : `calc(${theme.spacing(8)} + 1px)`,
+          },
+          width: {
+            xs: "100%",
+            md: open
+              ? `calc(100% - ${drawerWidth}px)`
+              : `calc(100% - (${theme.spacing(8)} + 1px))`,
+          },
+          transition: theme.transitions.create(["margin-left", "width"], {
+            easing: theme.transitions.easing.sharp,
+            duration: open
+              ? theme.transitions.duration.enteringScreen
+              : theme.transitions.duration.leavingScreen,
+          }),
         }}
       >
         <div className={cn("flex-1 relative pt-14 sm:pt-16 flex flex-col overflow-hidden")}>

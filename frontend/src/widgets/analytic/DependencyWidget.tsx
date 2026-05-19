@@ -11,6 +11,8 @@ import {
   CircularProgress,
   TextField,
   InputAdornment,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import { useAuth } from "@/shared/model/auth";
 import { fetchChartData } from "@/features/analytic/model/fetchCategory";
@@ -34,11 +36,13 @@ const CorrelationCell = React.memo(
     labelX,
     labelY,
     cutoff,
+    cellSize,
   }: {
     r: number;
     labelX: string;
     labelY: string;
     cutoff: number;
+    cellSize: number;
   }) {
     const absR = Math.abs(r);
     const isBelowCutoff = absR < cutoff;
@@ -55,10 +59,10 @@ const CorrelationCell = React.memo(
       >
         <Box
           sx={{
-            width: CELL_SIZE,
-            minWidth: CELL_SIZE,
-            height: CELL_SIZE,
-            minHeight: CELL_SIZE,
+            width: cellSize,
+            minWidth: cellSize,
+            height: cellSize,
+            minHeight: cellSize,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -90,7 +94,8 @@ const CorrelationCell = React.memo(
       prev.r === next.r &&
       prev.cutoff === next.cutoff &&
       prev.labelX === next.labelX &&
-      prev.labelY === next.labelY
+      prev.labelY === next.labelY &&
+      prev.cellSize === next.cellSize
     );
   },
 );
@@ -99,9 +104,14 @@ const DependencyWidget: React.FC = () => {
   const { token } = useAuth();
   const { activeSites } = useAnalyticSites();
   const { isVariableDisabled, fromDate, toDate } = useAnalyticStore();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const [method, setMethod] = useState<"pearson" | "spearman">("pearson");
   const [cutoff, setCutoff] = useState<number>(0);
+  const cellSize = isMobile ? 40 : CELL_SIZE;
+  const rowHeaderWidth = isMobile ? 144 : ROW_HEADER_WIDTH;
+  const colHeaderHeight = isMobile ? 128 : MIN_COL_HEADER_HEIGHT;
 
   const prevDatesRef = useRef({ from: fromDate, to: toDate });
 
@@ -286,7 +296,7 @@ const DependencyWidget: React.FC = () => {
     return (
       <Box
         sx={{
-          p: 4,
+          p: { xs: 2, sm: 4 },
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -308,13 +318,18 @@ const DependencyWidget: React.FC = () => {
   }
 
   return (
-    <div className="w-full max-w-full p-3 pt-6">
+    <div className="w-full max-w-full p-2 pt-4 sm:p-3 sm:pt-6">
       <Paper
         elevation={0}
-        className="border border-gray-200 rounded-lg p-3 mb-4 flex flex-wrap items-center gap-6"
+        className="border border-gray-200 rounded-lg p-3 mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-6"
         sx={{ width: "100%" }}
       >
-        <Stack direction="row" spacing={2} alignItems="center">
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={{ xs: 1, sm: 2 }}
+          alignItems={{ xs: "stretch", sm: "center" }}
+          sx={{ width: { xs: "100%", sm: "auto" } }}
+        >
           <Typography variant="subtitle2" fontWeight="bold">
             Метод:
           </Typography>
@@ -323,6 +338,8 @@ const DependencyWidget: React.FC = () => {
             exclusive
             onChange={(_, val) => val && setMethod(val)}
             size="small"
+            fullWidth
+            sx={{ width: { xs: "100%", sm: "auto" } }}
           >
             <ToggleButton value="pearson">Пирсон</ToggleButton>
             <ToggleButton value="spearman">Спирмен</ToggleButton>
@@ -330,10 +347,10 @@ const DependencyWidget: React.FC = () => {
         </Stack>
 
         <Stack
-          direction="row"
-          spacing={2}
-          alignItems="center"
-          sx={{ minWidth: 300 }}
+          direction={{ xs: "column", sm: "row" }}
+          spacing={{ xs: 1, sm: 2 }}
+          alignItems={{ xs: "stretch", sm: "center" }}
+          sx={{ width: { xs: "100%", sm: "auto" }, minWidth: { sm: 300 } }}
         >
           <Typography variant="subtitle2" fontWeight="bold">
             Cutoff:
@@ -345,7 +362,7 @@ const DependencyWidget: React.FC = () => {
             max={1}
             step={0.01}
             size="small"
-            sx={{ width: 120, mx: 2 }}
+            sx={{ width: { xs: "100%", sm: 120 }, mx: { sm: 2 } }}
           />
           <TextField
             value={cutoff}
@@ -353,7 +370,7 @@ const DependencyWidget: React.FC = () => {
             size="small"
             type="number"
             inputProps={{ min: 0, max: 1, step: 0.01 }}
-            sx={{ width: 128 }}
+            sx={{ width: { xs: "100%", sm: 128 } }}
             InputProps={{
               endAdornment: <InputAdornment position="end">R</InputAdornment>,
             }}
@@ -371,11 +388,18 @@ const DependencyWidget: React.FC = () => {
           gridTemplateColumns: "1fr",
         }}
       >
-        <Box sx={{ overflowX: "auto", width: "100%", maxWidth: "100%" }}>
+        <Box
+          sx={{
+            overflow: "auto",
+            width: "100%",
+            maxWidth: "100%",
+            maxHeight: { xs: "calc(100vh - 260px)", sm: "none" },
+          }}
+        >
           <Box
             sx={{
               display: "grid",
-              gridTemplateColumns: `${ROW_HEADER_WIDTH}px repeat(${matrix.labels.length}, ${CELL_SIZE}px)`,
+              gridTemplateColumns: `${rowHeaderWidth}px repeat(${matrix.labels.length}, ${cellSize}px)`,
               width: "max-content",
               minWidth: "100%",
             }}
@@ -389,10 +413,10 @@ const DependencyWidget: React.FC = () => {
                 bgcolor: "#f8fafc",
                 borderBottom: "1px solid #d1d5db",
                 borderRight: "1px solid #d1d5db",
-                width: ROW_HEADER_WIDTH,
+                width: rowHeaderWidth,
                 height: "auto",
-                minHeight: MIN_COL_HEADER_HEIGHT,
-                minWidth: ROW_HEADER_WIDTH,
+                minHeight: colHeaderHeight,
+                minWidth: rowHeaderWidth,
                 flexShrink: 0,
                 alignSelf: "stretch",
               }}
@@ -413,10 +437,10 @@ const DependencyWidget: React.FC = () => {
                   alignItems: "center",
                   justifyContent: "center",
                   height: "auto",
-                  maxHeight: "250px",
-                  minHeight: MIN_COL_HEADER_HEIGHT,
-                  width: CELL_SIZE + 6,
-                  minWidth: CELL_SIZE + 6,
+                  maxHeight: { xs: 180, sm: 250 },
+                  minHeight: colHeaderHeight,
+                  width: cellSize + 6,
+                  minWidth: cellSize + 6,
                   flexShrink: 0,
                   alignSelf: "stretch",
                   writingMode: "vertical-rl",
@@ -430,7 +454,7 @@ const DependencyWidget: React.FC = () => {
                   variant="caption"
                   sx={{
                     fontWeight: "medium",
-                    fontSize: "11px",
+                    fontSize: { xs: "10px", sm: "11px" },
                     transform: "rotate(0deg)",
                     whiteSpace: "normal",
                     wordBreak: "break-word",
@@ -456,9 +480,9 @@ const DependencyWidget: React.FC = () => {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "flex-end",
-                    width: ROW_HEADER_WIDTH,
-                    minWidth: ROW_HEADER_WIDTH,
-                    height: CELL_SIZE,
+                    width: rowHeaderWidth,
+                    minWidth: rowHeaderWidth,
+                    height: cellSize,
                     flexShrink: 0,
                     alignSelf: "stretch",
                     overflow: "hidden",
@@ -470,7 +494,7 @@ const DependencyWidget: React.FC = () => {
                     title={labelY}
                     sx={{
                       fontWeight: "medium",
-                      fontSize: "11px",
+                      fontSize: { xs: "10px", sm: "11px" },
                       textAlign: "right",
                       lineHeight: 1.2,
                       wordBreak: "break-word",
@@ -493,6 +517,7 @@ const DependencyWidget: React.FC = () => {
                       labelX={labelX}
                       labelY={labelY}
                       cutoff={cutoff}
+                      cellSize={cellSize}
                     />
                   );
                 })}

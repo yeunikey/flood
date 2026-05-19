@@ -19,14 +19,16 @@ function HecrasPlayer() {
       sx={{
         position: "absolute",
         bottom: 30,
-        left: "50%",
-        transform: "translateX(-50%)",
-        width: "60%",
+        left: { xs: 12, sm: "50%" },
+        right: { xs: 12, sm: "auto" },
+        transform: { xs: "none", sm: "translateX(-50%)" },
+        width: { xs: "auto", sm: "60%" },
         maxWidth: 600,
-        p: 2,
+        p: { xs: 1.25, sm: 2 },
         display: "flex",
+        flexWrap: { xs: "wrap", sm: "nowrap" },
         alignItems: "center",
-        gap: 2,
+        gap: { xs: 1, sm: 2 },
         zIndex: 1000,
       }}
       className="rounded-2xl"
@@ -45,12 +47,25 @@ function HecrasPlayer() {
         }}
         valueLabelDisplay="auto"
         valueLabelFormat={(index) => times[index]}
-        sx={{ flex: 1 }}
+        sx={{
+          flex: { xs: "1 0 100%", sm: 1 },
+          order: { xs: 3, sm: 2 },
+          minWidth: 0,
+          px: { xs: 0.5, sm: 0 },
+        }}
       />
 
       <Typography
         variant="body2"
-        sx={{ minWidth: 150, textAlign: "right", whiteSpace: "nowrap" }}
+        sx={{
+          flex: { xs: 1, sm: "0 0 auto" },
+          minWidth: { xs: 0, sm: 150 },
+          order: { xs: 2, sm: 3 },
+          textAlign: "right",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
       >
         {times[currentTimeIndex]}
       </Typography>

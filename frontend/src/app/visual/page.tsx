@@ -3,7 +3,6 @@
 import { fetchHecRas } from "@/entities/hec-ras/api/fetchHecRas";
 import { fetchLayers } from "@/entities/layer/api/fetchLayers";
 import { fetchPools } from "@/entities/pool/api/fetchPools";
-import CalculationMap from "@/features/visual/calculation/CalculationMap";
 import { useAuth } from "@/shared/model/auth";
 import View from "@/shared/ui/View";
 import CalculationWidget from "@/widgets/visual/CalculationWidget";
@@ -32,13 +31,23 @@ function SpatialPage() {
   return (
     <View links={["Паводки", "Прогнозы и сценарии"]}>
       <div className="flex flex-col h-full">
-        <div className="py-2 pb-0 px-3">
+        <div className="px-2 pt-2 sm:px-3">
           <Tabs
             value={currentPage}
             onChange={handleChange}
             variant="scrollable"
             scrollButtons="auto"
             allowScrollButtonsMobile
+            sx={{
+              minHeight: { xs: 40, sm: 48 },
+              "& .MuiTab-root": {
+                minHeight: { xs: 40, sm: 48 },
+                minWidth: { xs: "auto", sm: 160 },
+                px: { xs: 1.5, sm: 2 },
+                fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                whiteSpace: "nowrap",
+              },
+            }}
           >
             <Tab label="Сценарии HEC-RAS" />
             <Tab label="Прогнозы моделей" />
@@ -48,7 +57,7 @@ function SpatialPage() {
 
         <Divider orientation="horizontal" />
 
-        <div className="flex-1 min-h-0 relative">
+        <div className="flex-1 min-h-0 relative overflow-hidden">
           {currentPage == 0 && <HecRasWidget />}
           {currentPage == 1 && <PredictionWidget />}
           {currentPage == 2 && <CalculationWidget />}

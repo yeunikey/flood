@@ -90,6 +90,14 @@ export class DataController {
     };
   }
 
+  @Get('stats')
+  async getStats() {
+    return {
+      statusCode: 200,
+      data: await this.dataService.getStats(),
+    };
+  }
+
   @Post('category')
   async createCategory(@Body() body: { name: string; description: string }) {
     return {

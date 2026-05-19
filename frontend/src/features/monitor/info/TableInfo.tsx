@@ -175,28 +175,32 @@ function TableInfo() {
   return (
     <Zoom in={true} timeout={600}>
       <div className="flex flex-col h-full w-full">
-        <div className="flex-none mb-4 flex gap-2 items-center flex-wrap">
+        <div className="flex-none mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:flex-wrap">
           <Button
             variant="outlined"
             startIcon={<TuneIcon />}
             onClick={() => setSettingsOpen(true)}
+            sx={{ width: { xs: "100%", sm: "auto" } }}
           >
             Переменные
           </Button>
 
           <Tooltip title="На весь экран">
-            <Button variant="outlined" onClick={() => setFullscreenOpen(true)}>
+            <Button
+              variant="outlined"
+              onClick={() => setFullscreenOpen(true)}
+              sx={{ width: { xs: "100%", sm: "auto" }, minWidth: { sm: 40 } }}
+            >
               <OpenInFullIcon />
             </Button>
           </Tooltip>
 
-          <FormControl sx={{ maxWidth: 258 }}>
+          <FormControl size="small" sx={{ width: { xs: "100%", sm: 258 } }}>
             <InputLabel>Источник</InputLabel>
             <Select
               value={selectedSource?.id ?? ""}
               label="Источник"
               onChange={handleSourceChange}
-              size="small"
             >
               {availableSources.map((source) => (
                 <MenuItem key={source.id} value={source.id}>
@@ -242,8 +246,8 @@ function TableInfo() {
                 boxShadow: "none",
               }}
             >
-              <TableContainer sx={{ flex: 1, width: "100%" }}>
-                <Table stickyHeader size="small">
+              <TableContainer sx={{ flex: 1, width: "100%", overflowX: "auto" }}>
+                <Table stickyHeader size="small" sx={{ minWidth: 640 }}>
                   <TableHead>
                     <TableRow>
                       <TableCell
@@ -340,7 +344,25 @@ function TableInfo() {
                 onRowsPerPageChange={handleChangeRowsPerPage}
                 rowsPerPageOptions={[5, 10, 25, 50]}
                 labelRowsPerPage="Строк:"
-                sx={{ borderTop: "1px solid #e0e0e0" }}
+                sx={{
+                  borderTop: "1px solid #e0e0e0",
+                  "& .MuiTablePagination-toolbar": {
+                    flexWrap: "wrap",
+                    justifyContent: { xs: "center", sm: "flex-end" },
+                    gap: { xs: 0.5, sm: 0 },
+                    px: { xs: 1, sm: 2 },
+                  },
+                  "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows":
+                    {
+                      my: { xs: 0.5, sm: 0 },
+                    },
+                  "& .MuiTablePagination-spacer": {
+                    display: { xs: "none", sm: "block" },
+                  },
+                  "& .MuiTablePagination-actions": {
+                    ml: { xs: 0, sm: 2 },
+                  },
+                }}
               />
             </Paper>
           </div>

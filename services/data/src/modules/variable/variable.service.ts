@@ -1,8 +1,11 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Unit } from './entities/unit.entity';
 import { Variable } from './entities/variable.entity';
+
+const DATA_STATS_CACHE_KEY = 'data:stats';
 
 @Injectable()
 export class VariableService {
@@ -12,6 +15,8 @@ export class VariableService {
 
     @InjectRepository(Unit)
     private unitRepo: Repository<Unit>,
+
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
   async createOrUseVariable(data: {
@@ -53,6 +58,7 @@ export class VariableService {
       description: data.description,
       unit,
     });
+    await this.clearStatsCache();
 
     return {
       statusCode: HttpStatus.OK,
@@ -105,11 +111,12 @@ export class VariableService {
       };
     }
 
-    const variable = this.variableRepo.save({
+    const variable = await this.variableRepo.save({
       name: data.name,
       description: data.description,
       unit,
     });
+    await this.clearStatsCache();
 
     return {
       statusCode: HttpStatus.OK,
@@ -144,9 +151,14 @@ export class VariableService {
     }
 
     await this.variableRepo.remove(variable);
+    await this.clearStatsCache();
 
     return {
       statusCode: HttpStatus.OK,
     };
+  }
+
+  private async clearStatsCache() {
+    await this.cacheManager.del(DATA_STATS_CACHE_KEY);
   }
 }
