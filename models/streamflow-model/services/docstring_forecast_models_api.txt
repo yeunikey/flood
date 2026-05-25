@@ -1,0 +1,185 @@
+"""
+Purpose
+-------
+This module exposes a FastAPI microservice that provides two complementary capabilities
+for hydrological forecasting workflows:
+
+1) Online inference endpoint (`POST /forecast`)
+   - Resolves a model and its latest (or requested) version from Postgres metadata tables
+   - Resolves the active AOI binding (aoi_id, timezone) for that model version
+   - Loads the model configuration JSON (`config_json`) for the resolved version
+   - Reads AOI area (m²) from `aoi_attributes` for unit conversion needs
+   - Runs the forecast by calling `forecast.inference_lstm_lumped.run_forecast(...)`
+   - Optionally writes forecast outputs back to the database (and optionally writes
+     discharge_m3s alongside streamflow_mm_day)
+
+2) Historical retrieval endpoint (`POST /forecast-range`)
+   - Queries the database for previously stored forecast results (lead_day=1 only)
+     within a specified date interval
+   - Returns a simple time series suitable for plotting/validation dashboards
+   - Can optionally convert stored `streamflow` (mm/day) values to discharge (m³/s)
+     using AOI area (m²)
+
+It also exposes a convenience endpoint (`GET /dates`) that returns a fixed start date
+and the current date for UI date pickers / simple client validation.
+
+Key Requirements
+----------------
+- Environment variables:
+  - PG_URL (required): Postgres connection string
+  - MODEL_STORE (required): local path to model artifacts directory
+  - TZ_DEFAULT (optional): timezone fallback (default: "Asia/Almaty")
+
+- Database tables expected (minimum):
+  - models(model_id, model_name)
+  - model_versions(model_id, version, created_at, config_json)
+  - model_aoi(model_id, model_version, aoi_id, tz, is_active)
+  - aoi(aoi_id, aoi_name)
+  - aoi_attributes(aoi_id, area_m2)
+  - forecast_run(...)
+  - forecast_daily_aoi(run_id, lead_day, variable, value, ...)
+
+- `run_forecast` must be importable from:
+  - forecast.inference_lstm_lumped
+
+- Unit conversion helper must be importable from:
+  - utils.unit_convert (mm_day_to_discharge_m3s, round3)
+
+Assumptions / Notes
+-------------------
+- `POST /forecast` always forces `forecast_variable="streamflow"` when calling
+  `run_forecast` (the API treats the model output in DB as mm/day), and relies on
+  `run_forecast` to prepare the response `forecast` list (expected to be in m³/s if
+  `run_forecast` performs conversion using `area_m2` and `write_discharge`).
+- `POST /forecast-range` reads stored forecasts for lead_day=1 only, using the SQL
+  query `GET_FORECAST_RANGE_LEAD1`.
+- Status filtering is supported for retrieval via `statuses` array (SQL: status = any(%s)).
+
+Endpoints
+---------
+1) POST /forecast
+   Run inference for a given model + issue_date, optionally writing results to DB.
+
+   Request model: ForecastRequest
+   - model_name: str (required)
+   - model_version: Optional[str] (if omitted -> latest)
+   - issue_date: str (required, "YYYY-MM-DD")
+   - run_status: str (default "active")
+   - fallback_status: str (default "done")
+   - device: str (default "cpu"; "cpu" | "cuda")
+   - forecast_variable: str (default "streamflow") [kept but API enforces mm/day internally]
+   - min_lag_days: int (default 30)
+   - realtime_date: Optional[str] (default None -> dt.date.today())
+   - write_db: bool (default True)
+   - write_discharge: bool (default True)
+
+   Response model: ForecastResponse
+   - model_name: str
+   - model_version: str
+   - aoi_name: str
+   - tz: str
+   - issue_date: str
+   - db_run_ids: List[str]
+   - forecast: List[Dict[str, Any]]
+
+2) GET /dates
+   Returns a simple allowed date range.
+   Response model: DatesResponse
+   - start_date: str
+   - end_date: str
+
+3) POST /forecast-range
+   Retrieve stored forecasts (lead_day=1) for a date interval.
+
+   Request model: ForecastRangeRequest
+   - model_name: str (required)
+   - model_version: Optional[str] (if omitted -> latest)
+   - start_date: str (required, "YYYY-MM-DD")
+   - end_date: str (required, "YYYY-MM-DD")
+   - db_variable: str (default "discharge_m3s")
+       If "streamflow", values are assumed mm/day and converted to m³/s in response
+       using AOI area (m²).
+   - statuses: List[str] (default ["done"])
+
+   Response model: ForecastRangeResponse
+   - model_name: str
+   - model_version: str
+   - aoi_name: str
+   - tz: str
+   - start_date: str
+   - end_date: str
+   - unit: str (always "m3/s")
+   - series: List[{"date": "YYYY-MM-DD", "value": float}]
+
+How to Run
+----------
+Windows example:
+
+  set PG_URL=postgresql://app_writer:flood2025@localhost:5432/hydro_forecasts
+  set MODEL_STORE=C:\\Users\\user_pc\\models_ETL\\models_ETL_new\\models\uba_lumped
+  DATA_LATENCY_DAYS = int(os.environ.get("DATA_LATENCY_DAYS", "6"))
+  uvicorn services.forecast_models_api:app --host 0.0.0.0 --port 8000
+
+Use Case Examples
+-----------------
+1) Run a forecast for a specific issue_date (write to DB, return forecast list)
+
+  curl -X POST http://localhost:8000/forecast ^
+    -H "Content-Type: application/json" ^
+    -d "{ \
+      \"model_name\": \"LSTM_lumped_Uba\", \
+      \"model_version\": \"v1.0\", \
+      \"issue_date\": \"2025-02-02\", \
+      \"device\": \"cuda\", \
+      \"run_status\": \"active\", \
+      \"fallback_status\": \"done\", \
+      \"min_lag_days\": 30, \
+      \"write_db\": true, \
+      \"write_discharge\": true \
+    }"
+
+2) Run a forecast using the latest model version (omit model_version)
+
+  curl -X POST http://localhost:8000/forecast ^
+    -H "Content-Type: application/json" ^
+    -d "{ \
+      \"model_name\": \"LSTM_lumped_Uba\", \
+      \"issue_date\": \"2025-02-02\" \
+    }"
+
+3) Retrieve stored lead_day=1 forecasts for a date range (default db_variable=discharge_m3s)
+
+  curl -X POST http://localhost:8000/forecast-range ^
+    -H "Content-Type: application/json" ^
+    -d "{ \
+      \"model_name\": \"LSTM_lumped_Uba\", \
+      \"model_version\": \"v1.0\", \
+      \"start_date\": \"2025-02-01\", \
+      \"end_date\": \"2025-03-01\", \
+      \"db_variable\": \"discharge_m3s\", \
+      \"statuses\": [\"done\"] \
+    }"
+
+4) Retrieve stored forecasts when DB stores streamflow in mm/day, convert to m³/s in response
+
+  curl -X POST http://localhost:8000/forecast-range ^
+    -H "Content-Type: application/json" ^
+    -d "{ \
+      \"model_name\": \"LSTM_lumped_Uba\", \
+      \"model_version\": \"v1.0\", \
+      \"start_date\": \"2025-02-01\", \
+      \"end_date\": \"2025-03-01\", \
+      \"db_variable\": \"streamflow\", \
+      \"statuses\": [\"done\"] \
+    }"
+
+5) Get allowed dates for UI pickers
+
+  curl http://localhost:8000/dates
+
+HTTP Error Behavior
+-------------------
+- 400: invalid date format; missing model_aoi mapping; invalid request constraints raised as ValueError
+- 404: model not found; no versions found; missing config_json
+- 500: MODEL_STORE not found; AOI not found; AOI area missing; inference failures; unexpected errors
+"""

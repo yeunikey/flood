@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { LineChart } from "@mui/x-charts/LineChart";
 import { ChartsReferenceLine } from "@mui/x-charts/ChartsReferenceLine";
+import { api } from "@/shared/model/api/instance";
 import {
   Card,
   CardContent,
@@ -29,56 +30,18 @@ interface ForecastDataPoint {
   [key: string]: string | number | null;
 }
 
-const MOCK_DATA: ForecastDataPoint[] = [
-  {
-    date: "07.01.2026",
-    displayDate: "01.07",
-    predicted: 396.8,
-    observed: 385.5,
-  },
-  {
-    date: "08.01.2026",
-    displayDate: "01.08",
-    predicted: 428.5,
-    observed: 439.3,
-  },
-  {
-    date: "09.01.2026",
-    displayDate: "01.09",
-    predicted: 583.2,
-    observed: 550.4,
-  },
-  {
-    date: "10.01.2026",
-    displayDate: "01.10",
-    predicted: 669.3,
-    observed: 613.7,
-  },
-  {
-    date: "11.01.2026",
-    displayDate: "01.11",
-    predicted: 659.1,
-    observed: 633.9,
-  },
-  {
-    date: "12.01.2026",
-    displayDate: "01.12",
-    predicted: 506.6,
-    observed: null,
-  },
-  {
-    date: "13.01.2026",
-    displayDate: "01.13",
-    predicted: 492.0,
-    observed: null,
-  },
-  {
-    date: "14.01.2026",
-    displayDate: "01.14",
-    predicted: 410.7,
-    observed: null,
-  },
-];
+interface StreamflowForecastPoint {
+  forecast_date: string;
+  value: number;
+}
+
+interface StreamflowForecastResponse {
+  model_name: string;
+  model_version: string;
+  aoi_name: string;
+  issue_date: string;
+  forecast: StreamflowForecastPoint[];
+}
 
 const QUANTILES = {
   q95: 900,
@@ -86,7 +49,35 @@ const QUANTILES = {
   q995: 1500,
 };
 
-const ForecastSummary = () => {
+const formatDate = (date: string) =>
+  new Intl.DateTimeFormat("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(date));
+
+const formatDisplayDate = (date: string) =>
+  new Intl.DateTimeFormat("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+  }).format(new Date(date));
+
+const mapForecastData = (
+  forecast: StreamflowForecastPoint[],
+): ForecastDataPoint[] =>
+  forecast.map((point) => ({
+    date: formatDate(point.forecast_date),
+    displayDate: formatDisplayDate(point.forecast_date),
+    predicted: point.value,
+    observed: null,
+  }));
+
+const ForecastSummary = ({ data }: { data: ForecastDataPoint[] }) => {
+  const peak = data.reduce<ForecastDataPoint | null>((max, point) => {
+    if (!max || point.predicted > max.predicted) return point;
+    return max;
+  }, null);
+
   return (
     <Card variant="outlined" sx={{ borderRadius: 2 }}>
       <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
@@ -131,10 +122,10 @@ const ForecastSummary = () => {
               variant="h5"
               sx={{ mt: 1, fontWeight: "bold", color: "text.primary" }}
             >
-              669.3 м³/с
+              {peak ? `${peak.predicted.toFixed(1)} м³/с` : "Нет данных"}
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              дата: 10.01.2026
+              дата: {peak?.date || "-"}
             </Typography>
           </Box>
 
@@ -228,7 +219,15 @@ const ForecastTable = ({ data }: { data: ForecastDataPoint[] }) => {
   );
 };
 
-const ChartSection = () => {
+const ChartSection = ({
+  data,
+  issueDate,
+  aoiName,
+}: {
+  data: ForecastDataPoint[];
+  issueDate: string;
+  aoiName: string;
+}) => {
   const [scale, setScale] = useState<"focus" | "full">("full");
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -266,9 +265,9 @@ const ChartSection = () => {
           <Typography variant="body2" color="text.secondary">
             Гидропост:{" "}
             <Box component="span" fontWeight="medium" color="primary.main">
-              Шемонаиха
+              {aoiName}
             </Box>{" "}
-            · Дата старта: 07.01.2026 · Горизонт: 7 дней
+            · Дата старта: {issueDate} · Горизонт: 7 дней
           </Typography>
         </Box>
 
@@ -333,7 +332,7 @@ const ChartSection = () => {
             Расход воды, м³/с (прогноз на 7 дней)
           </Typography>
           <LineChart
-            dataset={MOCK_DATA}
+            dataset={data}
             height={chartHeight}
             margin={chartMargin}
             grid={{ horizontal: true }}
@@ -421,6 +420,28 @@ const ChartSection = () => {
 };
 
 export default function ForecastWidget() {
+  const [forecast, setForecast] = useState<StreamflowForecastResponse | null>(
+    null,
+  );
+
+  useEffect(() => {
+    api
+      .post<StreamflowForecastResponse>("models/streamflow/forecast", {
+        model_name: "LSTM_lumped_Uba",
+        model_version: "v1.0",
+        issue_date: "2025-02-02",
+        device: "cpu",
+        write_db: true,
+        write_discharge: true,
+      })
+      .then(({ data }) => setForecast(data));
+  }, []);
+
+  const data = useMemo(
+    () => mapForecastData(forecast?.forecast || []),
+    [forecast],
+  );
+
   return (
     <div className="p-2 sm:p-3">
       <Box sx={{ maxWidth: 1600, mx: "auto" }}>
@@ -431,10 +452,14 @@ export default function ForecastWidget() {
             gap: { xs: 2, sm: 3 },
           }}
         >
-          <ChartSection />
+          <ChartSection
+            data={data}
+            issueDate={forecast ? formatDate(forecast.issue_date) : "-"}
+            aoiName={forecast?.aoi_name || "-"}
+          />
           <Box display="flex" flexDirection="column" gap={{ xs: 2, sm: 3 }}>
-            <ForecastSummary />
-            <ForecastTable data={MOCK_DATA} />
+            <ForecastSummary data={data} />
+            <ForecastTable data={data} />
           </Box>
         </Box>
       </Box>

@@ -1,0 +1,10 @@
+# virtual environments
+venv/
+.env
+
+# python junk
+__pycache__/
+*.pyc
+
+# system
+.DS_Store

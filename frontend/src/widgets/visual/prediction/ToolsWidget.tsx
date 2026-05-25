@@ -41,9 +41,9 @@ function ToolsWidget() {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <div className="flex flex-col gap-3 p-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-6">
-          <FormControl size="small" sx={{ width: { xs: "100%", lg: 192 } }}>
+      <div className="flex flex-nowrap items-center gap-3 overflow-x-auto p-3 lg:justify-between">
+        <div className="flex min-w-max flex-nowrap items-center gap-3 lg:gap-6">
+          <FormControl size="small" sx={{ width: { xs: 172, lg: 192 }, flexShrink: 0 }}>
             <InputLabel id="variable-select-label">Переменная</InputLabel>
             <Select
               labelId="variable-select-label"
@@ -63,20 +63,19 @@ function ToolsWidget() {
             className="hidden md:block"
           />
 
-          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
+          <div className="flex flex-nowrap items-center gap-3 sm:gap-4">
             <ToggleButtonGroup
               color="primary"
               value={dateMode}
               exclusive
               onChange={handleModeChange}
               size="small"
-              fullWidth
-              sx={{ width: { xs: "100%", sm: "auto" } }}
+              sx={{ flexShrink: 0 }}
             >
-              <ToggleButton value="single" className="px-4!" sx={{ flex: 1 }}>
+              <ToggleButton value="single" className="px-4!">
                 День
               </ToggleButton>
-              <ToggleButton value="range" className="px-4!" sx={{ flex: 1 }}>
+              <ToggleButton value="range" className="px-4!">
                 Период
               </ToggleButton>
             </ToggleButtonGroup>
@@ -89,17 +88,18 @@ function ToolsWidget() {
                 slotProps={{
                   textField: {
                     size: "small",
-                    sx: { width: { xs: "100%", sm: 160 } },
+                    sx: { width: { xs: 148, sm: 160 }, flexShrink: 0 },
                   },
                 }}
               />
             ) : (
               <Box
                 display="flex"
-                alignItems={{ xs: "stretch", sm: "center" }}
-                flexDirection={{ xs: "column", sm: "row" }}
+                alignItems="center"
+                flexDirection="row"
                 gap={1}
-                width={{ xs: "100%", sm: "auto" }}
+                width="auto"
+                flexShrink={0}
               >
                 <DatePicker
                   label="С"
@@ -108,11 +108,11 @@ function ToolsWidget() {
                   slotProps={{
                     textField: {
                       size: "small",
-                      sx: { width: { xs: "100%", sm: 160 } },
+                      sx: { width: { xs: 148, sm: 160 }, flexShrink: 0 },
                     },
                   }}
                 />
-                <Typography className="hidden sm:block">-</Typography>
+                <Typography sx={{ flexShrink: 0 }}>-</Typography>
                 <DatePicker
                   label="По"
                   value={endDate}
@@ -120,7 +120,7 @@ function ToolsWidget() {
                   slotProps={{
                     textField: {
                       size: "small",
-                      sx: { width: { xs: "100%", sm: 160 } },
+                      sx: { width: { xs: 148, sm: 160 }, flexShrink: 0 },
                     },
                   }}
                 />
@@ -134,7 +134,8 @@ function ToolsWidget() {
           startIcon={<ShowChart />}
           disableElevation
           sx={{
-            width: { xs: "100%", lg: "auto" },
+            flexShrink: 0,
+            whiteSpace: "nowrap",
             bgcolor: "#1976d2",
             fontWeight: 500,
             "&:hover": { bgcolor: "#1565c0" },

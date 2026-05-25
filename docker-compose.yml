@@ -25,6 +25,19 @@ services:
     volumes:
       - db_info_data:/var/lib/postgresql/data
 
+  streamflow-db:
+    image: postgres:15-alpine
+    container_name: postgres-streamflow-db
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=Astana2026!Bigdata
+      - POSTGRES_DB=hydro_forecasts
+    ports:
+      - "5435:5432"
+    volumes:
+      - db_streamflow_data:/var/lib/postgresql/data
+
   frontend:
     container_name: frontend
     build:
@@ -57,26 +70,27 @@ services:
       - auth-service
       - data-service
       - tiles-service
+      - streamflow-model
       - db
 
-  info-service:
-    container_name: info-service
-    build:
-      context: ./services/info
-      target: dev
-    restart: always
-    expose:
-      - "3000"
-    volumes:
-      - ./services/info:/app
-      - /app/node_modules
-      - /app/dist
-    env_file:
-      - ".env.dev"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    depends_on:
-      - db
+  # info-service:
+  #   container_name: info-service
+  #   build:
+  #     context: ./services/info
+  #     target: dev
+  #   restart: always
+  #   expose:
+  #     - "3000"
+  #   volumes:
+  #     - ./services/info:/app
+  #     - /app/node_modules
+  #     - /app/dist
+  #   env_file:
+  #     - ".env.dev"
+  #   extra_hosts:
+  #     - "host.docker.internal:host-gateway"
+  #   depends_on:
+  #     - db
 
   auth-service:
     container_name: auth-service
@@ -143,6 +157,32 @@ services:
     depends_on:
       - db
 
+  streamflow-model:
+    container_name: streamflow-model
+    build:
+      context: ./models/streamflow-model
+      dockerfile: Dockerfile
+    restart: always
+    expose:
+      - "8000"
+    volumes:
+      - ./models/streamflow-model:/app
+      - /Users/yeunikey/Downloads/_cdsapirc.uu:/root/.cdsapirc:ro
+    environment:
+      PG_URL: postgresql://postgres:Astana2026!Bigdata@streamflow-db:5432/hydro_forecasts
+      MODEL_STORE: /app/models/uba_lumped
+      TZ_DEFAULT: Asia/Almaty
+      DATA_LATENCY_DAYS: "6"
+      AOI_BBOX: "81.4833333333,50.25,84.2710979886,51.0170199924"
+      MODEL_RAW_ROOT: /app/ingest/model_raw_data
+      AUTO_PREPARE_FEATURES: "true"
+      USE_DAILY_FEATURES: "true"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - streamflow-db
+
 volumes:
   db_data:
   db_info_data:
+  db_streamflow_data:

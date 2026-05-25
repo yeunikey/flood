@@ -5,6 +5,8 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
@@ -16,6 +18,8 @@ import { fetchAnalyticData } from "@/features/analytic/model/fetchCategory";
 import { useAnalyticSites } from "@/features/analytic/model/useAnalyticSites";
 
 function ToolsWidget() {
+  const theme = useTheme();
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down("xl"));
   const { token } = useAuth();
   const {
     variableCollapse,
@@ -61,15 +65,26 @@ function ToolsWidget() {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <div className="flex flex-col gap-3 p-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-6">
+      <div className="flex flex-nowrap items-center gap-2 overflow-hidden p-3 sm:gap-3 lg:justify-between">
+        <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-2 sm:min-w-max sm:gap-3 lg:gap-6">
           <Button
             variant="outlined"
             startIcon={<TuneIcon />}
             onClick={() => setVariableCollapse(!variableCollapse)}
-            sx={{ width: { xs: "100%", lg: "auto" } }}
+            aria-label="Переменные"
+            sx={{
+              flexShrink: 0,
+              minWidth: { xs: 40, sm: 64 },
+              width: { xs: 40, sm: "auto" },
+              px: { xs: 1, sm: 2 },
+              whiteSpace: "nowrap",
+              "& .MuiButton-startIcon": {
+                mr: { xs: 0, sm: 1 },
+                ml: { xs: 0, sm: -0.5 },
+              },
+            }}
           >
-            Переменные
+            {!isSmallScreen && "Переменные"}
           </Button>
 
           <Divider
@@ -78,12 +93,12 @@ function ToolsWidget() {
             className="hidden md:block"
           />
 
-          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4 lg:gap-6">
-            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+          <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-2 sm:flex-none sm:gap-3 lg:gap-6">
+            <div className="flex min-w-0 flex-nowrap items-center gap-1 sm:gap-3">
               <Typography
                 color="textSecondary"
                 variant="body2"
-                sx={{ flexShrink: 0 }}
+                sx={{ display: { xs: "none", sm: "block" }, flexShrink: 0 }}
               >
                 от
               </Typography>
@@ -99,17 +114,17 @@ function ToolsWidget() {
                 slotProps={{
                   textField: {
                     size: "small",
-                    sx: { width: { xs: "100%", sm: 180 } },
+                    sx: { width: { xs: 84, sm: 180 }, flexShrink: 1 },
                   },
                 }}
               />
             </div>
 
-            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+            <div className="flex min-w-0 flex-nowrap items-center gap-1 sm:gap-3">
               <Typography
                 color="textSecondary"
                 variant="body2"
-                sx={{ flexShrink: 0 }}
+                sx={{ display: { xs: "none", sm: "block" }, flexShrink: 0 }}
               >
                 до
               </Typography>
@@ -125,7 +140,7 @@ function ToolsWidget() {
                 slotProps={{
                   textField: {
                     size: "small",
-                    sx: { width: { xs: "100%", sm: 180 } },
+                    sx: { width: { xs: 84, sm: 180 }, flexShrink: 1 },
                   },
                 }}
               />
@@ -133,7 +148,7 @@ function ToolsWidget() {
           </div>
 
           {!showDependencies && (
-            <div className="w-full sm:w-auto">
+            <div className="shrink-0">
               <ToggleButtonGroup
                 color="primary"
                 value={viewMode}
@@ -141,13 +156,19 @@ function ToolsWidget() {
                 onChange={(_, a) => setViewMode(a)}
                 aria-label="Platform"
                 size="small"
-                fullWidth
-                sx={{ width: { xs: "100%", sm: "auto" } }}
+                sx={{
+                  flexShrink: 0,
+                  "& .MuiToggleButton-root": {
+                    minWidth: { xs: 42, sm: 64 },
+                    px: { xs: 0.75, sm: 3 },
+                    fontSize: { xs: 12, sm: 14 },
+                  },
+                }}
               >
-                <ToggleButton value="table" className="px-6!" sx={{ flex: 1 }}>
+                <ToggleButton value="table">
                   Табличный
                 </ToggleButton>
-                <ToggleButton value="chart" className="px-6!" sx={{ flex: 1 }}>
+                <ToggleButton value="chart">
                   График
                 </ToggleButton>
               </ToggleButtonGroup>
@@ -161,9 +182,21 @@ function ToolsWidget() {
           disableElevation
           onClick={() => setShowDependencies(!showDependencies)}
           color="primary"
-          sx={{ width: { xs: "100%", lg: "auto" } }}
+          aria-label={!showDependencies ? "Построить зависимости" : "Обратно"}
+          sx={{
+            flexShrink: 0,
+            minWidth: { xs: 40, sm: 64 },
+            width: { xs: 40, sm: "auto" },
+            px: { xs: 1, sm: 2 },
+            whiteSpace: "nowrap",
+            "& .MuiButton-startIcon": {
+              mr: { xs: 0, sm: 1 },
+              ml: { xs: 0, sm: -0.5 },
+            },
+          }}
         >
-          {!showDependencies ? "Построить зависимости" : "Обратно"}
+          {!isSmallScreen &&
+            (!showDependencies ? "Построить зависимости" : "Обратно")}
         </Button>
       </div>
     </LocalizationProvider>
