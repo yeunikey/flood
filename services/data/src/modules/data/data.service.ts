@@ -56,7 +56,7 @@ interface UploadChunkPayloadDto {
   chunks: DataRowDto[];
 }
 
-const DATA_STATS_CACHE_KEY = 'data:stats';
+const DATA_STATS_CACHE_KEY = 'data:stats:v2';
 const DATA_STATS_CACHE_TTL = 5 * 60 * 1000;
 
 export interface PaginatedResult<T> {
@@ -78,6 +78,17 @@ export interface DataStats {
 export interface CategoryStats {
   categoryId: number;
   categoryName: string;
+  groupsCount: number;
+  valuesCount: number;
+  variablesCount: number;
+  lastDate: string | null;
+  sites: SiteStats[];
+}
+
+export interface SiteStats {
+  siteId: number;
+  siteCode: string;
+  siteName: string;
   groupsCount: number;
   valuesCount: number;
   variablesCount: number;
@@ -276,27 +287,79 @@ export class DataService {
   }
 
   private async getCategoryStats(): Promise<CategoryStats[]> {
-    const rawStats = await this.categoryRepo
-      .createQueryBuilder('category')
-      .leftJoin(Group, 'grp', 'grp.category_id = category.id')
-      .leftJoin(DataValue, 'dataValue', 'dataValue.group_id = grp.id')
-      .select('category.id', 'categoryId')
-      .addSelect('category.name', 'categoryName')
-      .addSelect('COUNT(DISTINCT grp.id)', 'groupsCount')
-      .addSelect('COUNT(dataValue.id)', 'valuesCount')
-      .addSelect('COUNT(DISTINCT dataValue.variable_id)', 'variablesCount')
-      .addSelect('MAX(grp.date_utc)', 'lastDate')
-      .groupBy('category.id')
-      .addGroupBy('category.name')
-      .orderBy('category.name', 'ASC')
-      .getRawMany<{
-        categoryId: string | number;
-        categoryName: string;
-        groupsCount: string;
-        valuesCount: string;
-        variablesCount: string;
-        lastDate: Date | string | null;
-      }>();
+    const [rawStats, rawSiteStats] = await Promise.all([
+      this.categoryRepo
+        .createQueryBuilder('category')
+        .leftJoin(Group, 'grp', 'grp.category_id = category.id')
+        .leftJoin(DataValue, 'dataValue', 'dataValue.group_id = grp.id')
+        .select('category.id', 'categoryId')
+        .addSelect('category.name', 'categoryName')
+        .addSelect('COUNT(DISTINCT grp.id)', 'groupsCount')
+        .addSelect('COUNT(dataValue.id)', 'valuesCount')
+        .addSelect('COUNT(DISTINCT dataValue.variable_id)', 'variablesCount')
+        .addSelect('MAX(grp.date_utc)', 'lastDate')
+        .groupBy('category.id')
+        .addGroupBy('category.name')
+        .orderBy('category.name', 'ASC')
+        .getRawMany<{
+          categoryId: string | number;
+          categoryName: string;
+          groupsCount: string;
+          valuesCount: string;
+          variablesCount: string;
+          lastDate: Date | string | null;
+        }>(),
+      this.groupRepo
+        .createQueryBuilder('grp')
+        .innerJoin(Site, 'site', 'site.id = grp.site_id')
+        .leftJoin(DataValue, 'dataValue', 'dataValue.group_id = grp.id')
+        .select('grp.category_id', 'categoryId')
+        .addSelect('site.id', 'siteId')
+        .addSelect('site.code', 'siteCode')
+        .addSelect('site.name', 'siteName')
+        .addSelect('COUNT(DISTINCT grp.id)', 'groupsCount')
+        .addSelect('COUNT(dataValue.id)', 'valuesCount')
+        .addSelect('COUNT(DISTINCT dataValue.variable_id)', 'variablesCount')
+        .addSelect('MAX(grp.date_utc)', 'lastDate')
+        .groupBy('grp.category_id')
+        .addGroupBy('site.id')
+        .addGroupBy('site.code')
+        .addGroupBy('site.name')
+        .orderBy('site.name', 'ASC')
+        .getRawMany<{
+          categoryId: string | number;
+          siteId: string | number;
+          siteCode: string;
+          siteName: string;
+          groupsCount: string;
+          valuesCount: string;
+          variablesCount: string;
+          lastDate: Date | string | null;
+        }>(),
+    ]);
+
+    const sitesByCategory = rawSiteStats.reduce<Map<number, SiteStats[]>>(
+      (sites, site) => {
+        const categoryId = Number(site.categoryId);
+        const categorySites = sites.get(categoryId) ?? [];
+
+        categorySites.push({
+          siteId: Number(site.siteId),
+          siteCode: site.siteCode,
+          siteName: site.siteName,
+          groupsCount: Number(site.groupsCount),
+          valuesCount: Number(site.valuesCount),
+          variablesCount: Number(site.variablesCount),
+          lastDate: site.lastDate
+            ? new Date(site.lastDate).toISOString()
+            : null,
+        });
+        sites.set(categoryId, categorySites);
+
+        return sites;
+      },
+      new Map<number, SiteStats[]>(),
+    );
 
     return rawStats.map((category) => ({
       categoryId: Number(category.categoryId),
@@ -307,6 +370,7 @@ export class DataService {
       lastDate: category.lastDate
         ? new Date(category.lastDate).toISOString()
         : null,
+      sites: sitesByCategory.get(Number(category.categoryId)) ?? [],
     }));
   }
 

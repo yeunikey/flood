@@ -122,15 +122,12 @@ from __future__ import annotations
 
 import os
 import datetime as dt
-import json
-import subprocess
-import threading
-from collections import deque
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 
 import psycopg
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from forecast.inference_lstm_lumped import run_forecast  # ты уже добавляла/добавишь run_forecast()
@@ -140,10 +137,6 @@ from utils.unit_convert import mm_day_to_discharge_m3s, round3
 PG_URL = os.environ.get("PG_URL", "")
 MODEL_STORE = os.environ.get("MODEL_STORE", "")
 TZ_FALLBACK = os.environ.get("TZ_DEFAULT", "Asia/Almaty")
-AOI_BBOX = os.environ.get("AOI_BBOX", "")
-MODEL_RAW_ROOT = os.environ.get("MODEL_RAW_ROOT", "/app/ingest/model_raw_data")
-AUTO_PREPARE_FEATURES = os.environ.get("AUTO_PREPARE_FEATURES", "true").lower() in ("1", "true", "yes", "on")
-USE_DAILY_FEATURES = os.environ.get("USE_DAILY_FEATURES", "true").lower() in ("1", "true", "yes", "on")
 # ✅ NEW: how many days your data is delayed (set by env, default 6)
 DATA_LATENCY_DAYS = int(os.environ.get("DATA_LATENCY_DAYS", "6"))
 
@@ -222,11 +215,17 @@ where fr.model_id = %s
 order by f.lead_day asc
 """
 
-GET_FEATURES_FOR_WINDOW = """
-select date, variable, stat
-from features_daily_aoi
-where aoi_id = %s
-  and date between %s and %s
+GET_AVAILABLE_ISSUE_DATES = """
+select distinct fr.issue_date
+from forecast_run fr
+join forecast_daily_aoi f on f.run_id = fr.run_id
+where fr.model_id = %s
+  and fr.model_version = %s
+  and fr.aoi_id = %s
+  and fr.status = any(%s)
+  and f.lead_day = 1
+  and f.variable = %s
+order by fr.issue_date asc
 """
 
 
@@ -235,17 +234,6 @@ def parse_date(s: str) -> dt.date:
         return dt.date.fromisoformat(s)
     except Exception:
         raise HTTPException(status_code=400, detail=f"Bad date '{s}', expected YYYY-MM-DD")
-
-
-def parse_cfg(cfg_raw: Any) -> dict:
-    if isinstance(cfg_raw, dict):
-        return cfg_raw
-    if isinstance(cfg_raw, (str, bytes)):
-        return json.loads(cfg_raw)
-    try:
-        return dict(cfg_raw)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Unsupported config_json type: {type(cfg_raw)}") from e
 
 
 # ✅ NEW: hard restriction for issue_date vs data availability
@@ -329,12 +317,18 @@ def get_cached_forecast(
     aoi_id,
     issue_date: dt.date,
     area_m2: float,
-    statuses: List[str],
 ) -> Optional[Dict[str, Any]]:
     rows = db_all(
         PG_URL,
         GET_CACHED_FORECAST,
-        (model_id, model_version, aoi_id, issue_date, ["discharge_m3s", "streamflow"], statuses),
+        (
+            model_id,
+            model_version,
+            aoi_id,
+            issue_date,
+            ["discharge_m3s", "streamflow"],
+            ["done", "active"],
+        ),
     )
     if not rows:
         return None
@@ -344,205 +338,22 @@ def get_cached_forecast(
     if not selected_rows:
         return None
 
-    run_id = selected_rows[0][0]
     forecast_rows = []
     for _, forecast_date, lead_day, variable, value in selected_rows:
-        v = float(value)
+        result_value = float(value)
         if variable == "streamflow":
-            v = mm_day_to_discharge_m3s(v, area_m2)
-
+            result_value = mm_day_to_discharge_m3s(result_value, area_m2)
         forecast_rows.append(
             {
                 "forecast_date": forecast_date.isoformat(),
-                "value": float(round3(v)),
                 "lead_day": int(lead_day),
-                "issue_date": issue_date.isoformat(),
+                "value": round3(result_value),
                 "unit": "m3/s",
-                "source": "cache",
+                "source": "database",
             }
         )
 
-    return {"db_run_ids": [str(run_id)], "forecast": forecast_rows}
-
-
-def find_missing_features(cfg: dict, aoi_id, issue_date: dt.date) -> List[Dict[str, Any]]:
-    seq_len = int(cfg["sequence_length"])
-    start = issue_date - dt.timedelta(days=seq_len)
-    end = issue_date - dt.timedelta(days=1)
-    required_pairs = [
-        (feature["db_variable"], feature["stat"])
-        for feature in cfg.get("features", {}).get("dynamic", [])
-    ]
-
-    rows = db_all(PG_URL, GET_FEATURES_FOR_WINDOW, (aoi_id, start, end))
-    existing = {}
-    for d, variable, stat in rows:
-        existing.setdefault(d, set()).add((variable, stat))
-
-    missing = []
-    for offset in range(seq_len):
-        d = start + dt.timedelta(days=offset)
-        have = existing.get(d, set())
-        for variable, stat in required_pairs:
-            if (variable, stat) not in have:
-                missing.append({"date": d.isoformat(), "variable": variable, "stat": stat})
-
-    return missing
-
-
-def run_command(args: List[str], description: str, timeout: int = 3600) -> None:
-    print(f"[JOB] Starting {description}", flush=True)
-    output_tail = deque(maxlen=100)
-    proc = subprocess.Popen(
-        args,
-        cwd="/app",
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        bufsize=1,
-        env={**os.environ, "PYTHONUNBUFFERED": "1"},
-    )
-
-    def relay_output() -> None:
-        assert proc.stdout is not None
-        for line in proc.stdout:
-            output_tail.append(line)
-            print(f"[{description}] {line}", end="", flush=True)
-
-    relay_thread = threading.Thread(target=relay_output, daemon=True)
-    relay_thread.start()
-    try:
-        proc.wait(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        proc.kill()
-        proc.wait()
-        relay_thread.join()
-        raise RuntimeError(f"{description} timed out after {timeout} seconds.")
-
-    relay_thread.join()
-    if proc.returncode != 0:
-        raise RuntimeError(f"{description} failed with code {proc.returncode}:\n{''.join(output_tail)[-4000:]}")
-    print(f"[JOB] Finished {description}", flush=True)
-
-
-def prepare_features_if_needed(
-    cfg: dict,
-    model_name: str,
-    model_version: str,
-    aoi_id,
-    aoi_name: str,
-    issue_date: dt.date,
-    tz: str,
-) -> None:
-    missing = find_missing_features(cfg, aoi_id, issue_date)
-    if not missing:
-        return
-
-    if not AUTO_PREPARE_FEATURES:
-        raise RuntimeError(
-            f"Input features are missing and AUTO_PREPARE_FEATURES=false. "
-            f"First missing item: {missing[0]}"
-        )
-
-    if not AOI_BBOX:
-        raise RuntimeError("Input features are missing and AOI_BBOX is not configured.")
-
-    seq_len = int(cfg["sequence_length"])
-    start = issue_date - dt.timedelta(days=seq_len)
-    end = issue_date - dt.timedelta(days=1)
-    raw_dir = Path(MODEL_RAW_ROOT) / model_name / "era5land_raw"
-    base_dir = raw_dir.parent
-
-    if USE_DAILY_FEATURES:
-        run_command(
-            [
-                "python",
-                "transform/download_daily_features_to_db.py",
-                "--pg-url",
-                PG_URL,
-                "--model-name",
-                model_name,
-                "--model-version",
-                model_version,
-                "--aoi-name",
-                aoi_name,
-                "--aoi-bbox",
-                AOI_BBOX,
-                "--tz",
-                tz,
-                "--start-date",
-                start.isoformat(),
-                "--end-date",
-                end.isoformat(),
-                "--cache-dir",
-                str(Path(MODEL_RAW_ROOT) / model_name / "daily_features"),
-            ],
-            "ERA5-Land daily features ingest",
-            timeout=7200,
-        )
-
-        missing_after = find_missing_features(cfg, aoi_id, issue_date)
-        if missing_after:
-            raise RuntimeError(f"Features are still missing after daily ingest. First missing item: {missing_after[0]}")
-        return
-
-    run_command(
-        [
-            "python",
-            "ingest/download_era5_raw.py",
-            "--start",
-            start.isoformat(),
-            "--end",
-            issue_date.isoformat(),
-            "--tz",
-            tz,
-            "--bbox",
-            AOI_BBOX,
-            "--pg-url",
-            PG_URL,
-            "--model-name",
-            model_name,
-            "--model-version",
-            model_version,
-            "--model-raw-dir",
-            str(raw_dir),
-        ],
-        "ERA5 raw download",
-        timeout=7200,
-    )
-
-    run_command(
-        [
-            "python",
-            "transform/etl_era5_raw_to_features_db.py",
-            "--pg-url",
-            PG_URL,
-            "--model-name",
-            model_name,
-            "--model-version",
-            model_version,
-            "--aoi-name",
-            aoi_name,
-            "--aoi-bbox",
-            AOI_BBOX,
-            "--tz",
-            tz,
-            "--base-dir",
-            str(base_dir),
-            "--require-success-flag",
-            "--skip-existing",
-            "--start-date",
-            start.isoformat(),
-            "--end-date",
-            end.isoformat(),
-        ],
-        "ERA5 raw to features ETL",
-        timeout=7200,
-    )
-
-    missing_after = find_missing_features(cfg, aoi_id, issue_date)
-    if missing_after:
-        raise RuntimeError(f"Features are still missing after auto-prepare. First missing item: {missing_after[0]}")
+    return {"db_run_ids": [str(selected_rows[0][0])], "forecast": forecast_rows}
 
 
 class ForecastRequest(BaseModel):
@@ -579,6 +390,16 @@ class DatesResponse(BaseModel):
     end_date: str
 
 
+class AvailabilityResponse(BaseModel):
+    model_name: str
+    model_version: str
+    aoi_name: str
+    dates: List[str]
+    months: List[str]
+    start_date: Optional[str]
+    end_date: Optional[str]
+
+
 class ForecastRangeRequest(BaseModel):
     model_name: str
     model_version: Optional[str] = None
@@ -602,6 +423,12 @@ class ForecastRangeResponse(BaseModel):
 
 
 app = FastAPI(title="Forecast API", version="1.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.post("/forecast", response_model=ForecastResponse)
@@ -609,7 +436,6 @@ def forecast(req: ForecastRequest):
     model_id = resolve_model_id(req.model_name)
     model_version = resolve_model_version(model_id, req.model_version)
     cfg_raw = load_cfg(model_id, model_version)
-    cfg = parse_cfg(cfg_raw)
 
     aoi_id, aoi_name, tz = resolve_aoi_and_tz(model_id, model_version)
 
@@ -629,14 +455,7 @@ def forecast(req: ForecastRequest):
     # ✅ NEW: enforce client cannot request too-recent issue_date (e.g., today)
     validate_issue_date(issue_date=issue_date, realtime_date=realtime)
 
-    cached = get_cached_forecast(
-        model_id=model_id,
-        model_version=model_version,
-        aoi_id=aoi_id,
-        issue_date=issue_date,
-        area_m2=area_m2,
-        statuses=["done", "active"],
-    )
+    cached = get_cached_forecast(model_id, model_version, aoi_id, issue_date, area_m2)
     if cached:
         return ForecastResponse(
             model_name=req.model_name,
@@ -653,16 +472,6 @@ def forecast(req: ForecastRequest):
         raise HTTPException(status_code=500, detail=f"MODEL_STORE not found: {model_store}")
 
     try:
-        prepare_features_if_needed(
-            cfg=cfg,
-            model_name=req.model_name,
-            model_version=model_version,
-            aoi_id=aoi_id,
-            aoi_name=aoi_name,
-            issue_date=issue_date,
-            tz=tz,
-        )
-
         result = run_forecast(
             pg_url=PG_URL,
             model_name=req.model_name,
@@ -683,11 +492,11 @@ def forecast(req: ForecastRequest):
 
             min_lag_days=req.min_lag_days,
             realtime_date=realtime,
-            write_db=True,
+            write_db=req.write_db,
 
             # ✅ для конвертации в m3/s в ответе и для записи discharge_m3s в DB
             area_m2=area_m2,
-            write_discharge=True,
+            write_discharge=req.write_discharge,
         )
 
     except ValueError as e:
@@ -717,6 +526,29 @@ def get_dates():
     return DatesResponse(start_date=start.isoformat(), end_date=end.isoformat())
 
 
+@app.get("/availability", response_model=AvailabilityResponse)
+def get_availability(model_name: str, model_version: Optional[str] = None):
+    model_id = resolve_model_id(model_name)
+    resolved_version = resolve_model_version(model_id, model_version)
+    aoi_id, aoi_name, _ = resolve_aoi_and_tz(model_id, resolved_version)
+    rows = db_all(
+        PG_URL,
+        GET_AVAILABLE_ISSUE_DATES,
+        (model_id, resolved_version, aoi_id, ["done"], "streamflow"),
+    )
+    dates = [row[0].isoformat() for row in rows]
+
+    return AvailabilityResponse(
+        model_name=model_name,
+        model_version=resolved_version,
+        aoi_name=aoi_name,
+        dates=dates,
+        months=sorted({date[:7] for date in dates}),
+        start_date=dates[0] if dates else None,
+        end_date=dates[-1] if dates else None,
+    )
+
+
 @app.post("/forecast-range", response_model=ForecastRangeResponse)
 def forecast_range(req: ForecastRangeRequest):
     model_id = resolve_model_id(req.model_name)
@@ -725,6 +557,8 @@ def forecast_range(req: ForecastRangeRequest):
 
     start = parse_date(req.start_date)
     end = parse_date(req.end_date)
+    if end < start:
+        raise HTTPException(status_code=400, detail="end_date must be on or after start_date")
 
     rows = db_all(
         PG_URL,
@@ -735,6 +569,8 @@ def forecast_range(req: ForecastRangeRequest):
     area_m2 = None
     if req.db_variable == "streamflow":
         row_area = db_one(PG_URL, GET_AOI_AREA, (aoi_id,))
+        if not row_area or row_area[0] is None:
+            raise HTTPException(status_code=500, detail=f"AOI area not found for aoi_id={aoi_id}")
         area_m2 = float(row_area[0])
 
     series = []
@@ -744,7 +580,7 @@ def forecast_range(req: ForecastRangeRequest):
         if req.db_variable == "streamflow":
             v = mm_day_to_discharge_m3s(v, area_m2)
 
-        series.append({"date": d.isoformat(), "value": v.__round__(3)})
+        series.append({"date": d.isoformat(), "value": round3(v)})
 
     return ForecastRangeResponse(
         model_name=req.model_name,

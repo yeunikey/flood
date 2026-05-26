@@ -1,14 +1,16 @@
 import TuneIcon from "@mui/icons-material/Tune";
 import { Box, Divider, Drawer, Fab, useMediaQuery, useTheme } from "@mui/material";
-import ToolsWidget from "./prediction/ToolsWidget";
 import PredictionItems from "@/features/visual/prediction/PredictionItems";
-import ForecastWidget from "./prediction/ForecastWidget";
+import PredictionTools from "@/features/visual/prediction/ui/PredictionTools";
+import ForecastWidget from "@/features/visual/prediction/ui/forecast/ForecastWidget";
+import { usePredictionSites } from "@/features/visual/prediction/model/usePredictionSites";
 import { useState } from "react";
 
 function PredictionWidget() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const activeSite = usePredictionSites((state) => state.activeSite);
 
   if (isMobile) {
     return (
@@ -51,7 +53,7 @@ function PredictionWidget() {
           }}
         >
           <Box sx={{ flexShrink: 0 }}>
-            <ToolsWidget />
+            <PredictionTools key={activeSite?.id ?? "no-site"} />
             <Divider orientation="horizontal" />
           </Box>
 
@@ -98,7 +100,7 @@ function PredictionWidget() {
         }}
       >
         <Box sx={{ flexShrink: 0 }}>
-          <ToolsWidget />
+          <PredictionTools key={activeSite?.id ?? "no-site"} />
           <Divider orientation="horizontal" />
         </Box>
 

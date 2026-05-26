@@ -5,7 +5,7 @@ import { Repository } from 'typeorm';
 import { Unit } from './entities/unit.entity';
 import { Variable } from './entities/variable.entity';
 
-const DATA_STATS_CACHE_KEY = 'data:stats';
+const DATA_STATS_CACHE_KEY = 'data:stats:v2';
 
 @Injectable()
 export class VariableService {

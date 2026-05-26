@@ -46,7 +46,7 @@ from zoneinfo import ZoneInfo
 try:
     from shapely import wkt
     from shapely.prepared import prep
-    from shapely.geometry import Point, box
+    from shapely.geometry import Point
 except Exception as e:
     raise SystemExit("Install shapely:  pip install shapely") from e
 
@@ -227,37 +227,16 @@ def load_model_spec(pg_url: str, model_name: str, model_version: str):
     return cfg, feats, required_pairs
 
 
-def parse_bbox(s: str):
-    try:
-        minlon, minlat, maxlon, maxlat = [float(v.strip()) for v in s.split(",")]
-    except Exception as e:
-        raise SystemExit('Invalid --aoi-bbox. Use "minLon,minLat,maxLon,maxLat".') from e
-
-    if minlon >= maxlon or minlat >= maxlat:
-        raise SystemExit("Invalid --aoi-bbox: min values must be lower than max values.")
-
-    return minlon, minlat, maxlon, maxlat
-
-
-def get_aoi(pg_url: str, aoi_name: str, aoi_bbox: Optional[str] = None):
+def get_aoi(pg_url: str, aoi_name: str):
     with psycopg.connect(pg_url) as conn:
         with conn.cursor() as cur:
             cur.execute(GET_AOI_ID_SQL, (aoi_name,))
             r1 = cur.fetchone()
-
-    if not r1:
-        raise SystemExit(f"AOI not found: {aoi_name}")
-
-    if aoi_bbox:
-        minlon, minlat, maxlon, maxlat = parse_bbox(aoi_bbox)
-        poly = box(minlon, minlat, maxlon, maxlat)
-        return r1[0], poly, prep(poly)
-
-    with psycopg.connect(pg_url) as conn:
-        with conn.cursor() as cur:
             cur.execute(GET_AOI_WKT_SQL, (aoi_name,))
             r2 = cur.fetchone()
 
+    if not r1:
+        raise SystemExit(f"AOI not found: {aoi_name}")
     if not r2 or not r2[0]:
         raise SystemExit(f"AOI geom is NULL: {aoi_name}")
 
@@ -415,11 +394,6 @@ def main():
     ap.add_argument("--model-name", required=True)
     ap.add_argument("--model-version", required=True)
     ap.add_argument("--aoi-name", required=True)
-    ap.add_argument(
-        "--aoi-bbox",
-        default=None,
-        help='Optional "minLon,minLat,maxLon,maxLat"; avoids requiring aoi.geom/PostGIS.',
-    )
     ap.add_argument("--tz", default="Asia/Almaty")
 
     # IMPORTANT: base-dir is the parent folder that contains era5land_raw/
@@ -440,7 +414,7 @@ def main():
         raise SystemExit(f"Raw folder not found: {raw_root}")
 
     _, feats_spec, required_pairs = load_model_spec(args.pg_url, args.model_name, args.model_version)
-    aoi_id, poly_geom, poly_prep = get_aoi(args.pg_url, args.aoi_name, args.aoi_bbox)
+    aoi_id, poly_geom, poly_prep = get_aoi(args.pg_url, args.aoi_name)
 
     raw_utc_dates = scan_raw_utc_dates(raw_root)
     if not raw_utc_dates:

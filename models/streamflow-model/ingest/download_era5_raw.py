@@ -62,7 +62,6 @@ import datetime as dt
 from pathlib import Path  
 from typing import Tuple, List 
 import sys                
-import threading
 # --- Dependency Section: External Libraries ---
 
 try:
@@ -183,19 +182,6 @@ def bbox_from_db(pg_url: str, aoi_name: str) -> Tuple[float, float, float, float
 
 def ensure_dir(p: Path):
     p.mkdir(parents=True, exist_ok=True)
-
-
-def log(message: str) -> None:
-    print(message, flush=True)
-
-
-def format_bytes(size: int) -> str:
-    value = float(size)
-    for unit in ("B", "KiB", "MiB", "GiB"):
-        if value < 1024 or unit == "GiB":
-            return f"{value:.1f} {unit}"
-        value /= 1024
-    return f"{value:.1f} GiB"
 
 
 def parse_date(s: str) -> dt.date:
@@ -340,45 +326,23 @@ def main():
     # ---------------- Which UTC days are needed ----------------
     # Execute downloads
     utc_days = utc_days_needed_for_local_range(start_local, end_local, args.tz)
-    log(f"[UTC] Need {len(utc_days)} UTC day files to cover local range {start_local}..{end_local}")
-    log(f"[OUT] {out_base}")
+    print(f"[UTC] Need {len(utc_days)} UTC day files to cover local range {start_local}..{end_local}")
+    print(f"[OUT] {out_base}")
 
     client = cdsapi.Client()
-    downloaded_bytes = 0
-    downloaded_files = 0
 
-    for index, d in enumerate(utc_days, start=1):
+    for d in utc_days:
         day_dir = out_base / f"{d:%Y/%m/%d}"
         ensure_dir(day_dir)
         nc_path = day_dir / f"era5-land_{d:%Y%m%d}.nc"
         ok_flag = day_dir / ".__SUCCESS__"
-        remaining = len(utc_days) - index
 
         # Check cache: Only skip if both the file and the success flag exist
         if nc_path.exists() and ok_flag.exists():
-            log(
-                f"[DOWNLOAD {index}/{len(utc_days)}] Cached {d} "
-                f"size={format_bytes(nc_path.stat().st_size)} remaining={remaining}"
-            )
+            print(f"[SKIP] {d} already downloaded.")
             continue
 
-        log(
-            f"[DOWNLOAD {index}/{len(utc_days)}] Starting date={d} -> {nc_path.name} "
-            f"variables={len(variables)}"
-        )
-        stopped = threading.Event()
-
-        def report_in_progress() -> None:
-            while not stopped.wait(20):
-                current_size = nc_path.stat().st_size if nc_path.exists() else 0
-                log(
-                    f"[DOWNLOAD {index}/{len(utc_days)}] In progress {nc_path.name} "
-                    f"file_on_disk={format_bytes(current_size)} "
-                    f"remaining_after_current={remaining}"
-                )
-
-        reporter = threading.Thread(target=report_in_progress, daemon=True)
-        reporter.start()
+        print(f"[CDS] {d} -> {nc_path.name}  vars={len(variables)}")
         try:
             client.retrieve(
                 args.dataset,
@@ -393,20 +357,8 @@ def main():
                 },
                 str(nc_path),
             )
-            stopped.set()
-            reporter.join()
             ok_flag.write_text("ok", encoding="utf-8")
-            size = nc_path.stat().st_size
-            downloaded_files += 1
-            downloaded_bytes += size
-            log(
-                f"[DOWNLOAD {index}/{len(utc_days)}] Saved {nc_path.name} "
-                f"size={format_bytes(size)} total={format_bytes(downloaded_bytes)} "
-                f"remaining={remaining}"
-            )
         except Exception as e:
-            stopped.set()
-            reporter.join()
             print(f"[ERROR] {d}: {e}", file=sys.stderr)
             # If partial/invalid file exists, remove it so next run retries cleanly
             try:
@@ -415,10 +367,7 @@ def main():
             except Exception:
                 pass
 
-    log(
-        f"[DONE] Raw download completed. Downloaded files={downloaded_files} "
-        f"size={format_bytes(downloaded_bytes)} requested_days={len(utc_days)}"
-    )
+    print("✅ Raw download done.")
 
 
 if __name__ == "__main__":

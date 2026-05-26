@@ -49,8 +49,8 @@ function SpatialPage() {
               },
             }}
           >
-            <Tab label="Сценарии HEC-RAS" />
             <Tab label="Прогнозы моделей" />
+            <Tab label="Сценарии HEC-RAS" />
             <Tab label="Расчёты Q1" />
           </Tabs>
         </div>
@@ -58,8 +58,8 @@ function SpatialPage() {
         <Divider orientation="horizontal" />
 
         <div className="flex-1 min-h-0 relative overflow-hidden">
-          {currentPage == 0 && <HecRasWidget />}
-          {currentPage == 1 && <PredictionWidget />}
+          {currentPage == 0 && <PredictionWidget />}
+          {currentPage == 1 && <HecRasWidget />}
           {currentPage == 2 && <CalculationWidget />}
         </div>
       </div>

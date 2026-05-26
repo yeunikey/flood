@@ -13,4 +13,4 @@ COPY . .
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "python db/bootstrap_api_db.py && uvicorn services.forecast_models_api:app --host 0.0.0.0 --port 8000"]
+CMD ["uvicorn", "services.forecast_models_api:app", "--host", "0.0.0.0", "--port", "8000"]

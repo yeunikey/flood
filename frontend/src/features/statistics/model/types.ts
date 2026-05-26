@@ -1,3 +1,13 @@
+export interface SiteStats {
+  siteId: number;
+  siteCode: string;
+  siteName: string;
+  groupsCount: number;
+  valuesCount: number;
+  variablesCount: number;
+  lastDate: string | null;
+}
+
 export interface CategoryStats {
   categoryId: number;
   categoryName: string;
@@ -5,6 +15,7 @@ export interface CategoryStats {
   valuesCount: number;
   variablesCount: number;
   lastDate: string | null;
+  sites: SiteStats[];
 }
 
 export interface DataStats {

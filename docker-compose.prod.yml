@@ -3,9 +3,10 @@ services:
     image: postgres:15-alpine
     container_name: postgres-db
     restart: always
+    env_file:
+      - ".env.prod"
     environment:
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=Astana2026!Bigdata
       - POSTGRES_DB=flood
     ports:
       - "5432:5432"
@@ -13,15 +14,16 @@ services:
       - db_data:/var/lib/postgresql/data
 
   streamflow-db:
-    image: postgres:15-alpine
+    image: postgis/postgis:18-3.6
     container_name: postgres-streamflow-db
     restart: always
+    env_file:
+      - ".env.prod"
     environment:
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=Astana2026!Bigdata
       - POSTGRES_DB=hydro_forecasts
     volumes:
-      - db_streamflow_data:/var/lib/postgresql/data
+      - db_streamflow_data:/var/lib/postgresql
 
   frontend:
     container_name: frontend
@@ -114,11 +116,12 @@ services:
     restart: always
     expose:
       - "8000"
+    env_file:
+      - ".env.prod"
     volumes:
       - ./models/streamflow-model:/app
-      - ${CDSAPIRC_PATH:?Set CDSAPIRC_PATH to the host .cdsapirc file}:/root/.cdsapirc:ro
+      - ./libs/_cdsapirc.uu:/root/.cdsapirc:ro
     environment:
-      PG_URL: postgresql://postgres:Astana2026!Bigdata@streamflow-db:5432/hydro_forecasts
       MODEL_STORE: /app/models/uba_lumped
       TZ_DEFAULT: Asia/Almaty
       DATA_LATENCY_DAYS: "6"
