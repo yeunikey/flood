@@ -41,6 +41,10 @@ services:
       - "3003:3000"
     env_file:
       - ".env.prod"
+    environment:
+      - HYDRO_PARSER_SCHEDULE_ENABLED=true
+      - HYDRO_PARSER_SCHEDULE_TIME=16:00
+      - HYDRO_PARSER_SCHEDULE_TZ=Asia/Almaty
     depends_on:
       - db
 
@@ -55,6 +59,7 @@ services:
     depends_on:
       - auth-service
       - data-service
+      - parser-service
       - tiles-service
       - streamflow-model
 
@@ -83,6 +88,20 @@ services:
       - "3000"
     volumes:
       - ./libs:/app/libs
+    env_file:
+      - ".env.prod"
+    depends_on:
+      - db
+
+  parser-service:
+    container_name: parser-service
+    build:
+      context: ./services/parser
+      dockerfile: Dockerfile
+      target: runner
+    restart: always
+    expose:
+      - "3000"
     env_file:
       - ".env.prod"
     depends_on:

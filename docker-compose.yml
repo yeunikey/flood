@@ -73,6 +73,7 @@ services:
     depends_on:
       - auth-service
       - data-service
+      - parser-service
       - tiles-service
       - streamflow-model
       - db
@@ -110,6 +111,10 @@ services:
       - /app/dist
     env_file:
       - ".env.dev"
+    environment:
+      - HYDRO_PARSER_SCHEDULE_ENABLED=true
+      - HYDRO_PARSER_SCHEDULE_TIME=16:00
+      - HYDRO_PARSER_SCHEDULE_TZ=Asia/Almaty
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -128,6 +133,25 @@ services:
       - /app/node_modules
       - /app/dist
       - ./libs:/app/libs
+    env_file:
+      - ".env.dev"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - db
+
+  parser-service:
+    container_name: parser-service
+    build:
+      context: ./services/parser
+      target: dev
+    restart: always
+    expose:
+      - "3000"
+    volumes:
+      - ./services/parser:/app
+      - /app/node_modules
+      - /app/dist
     env_file:
       - ".env.dev"
     extra_hosts:

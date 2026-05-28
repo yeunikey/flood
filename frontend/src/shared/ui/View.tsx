@@ -136,7 +136,11 @@ function View({ children, links, className }: ViewProps) {
     return ways
       .filter((item) => {
         if (item === null) return false;
-        if (item.path === "/admin" && user?.role !== "admin") return false;
+        if (
+          ["/admin", "/statistics", "/parser"].includes(item.path) &&
+          user?.role !== "admin"
+        )
+          return false;
         if (
           item.path === "/import" &&
           !["admin", "editor"].includes(user?.role || "")
@@ -171,7 +175,11 @@ function View({ children, links, className }: ViewProps) {
             }
             groups.push(null);
           } else {
-            if (item.path === "/admin" && user?.role !== "admin") return;
+            if (
+              ["/admin", "/statistics", "/parser"].includes(item.path) &&
+              user?.role !== "admin"
+            )
+              return;
             if (
               item.path === "/import" &&
               !["admin", "editor"].includes(user?.role || "")
@@ -467,7 +475,11 @@ function View({ children, links, className }: ViewProps) {
               }
               groups.push(null);
             } else {
-              if (item.path === "/admin" && user?.role !== "admin") return;
+              if (
+                ["/admin", "/statistics", "/parser"].includes(item.path) &&
+                user?.role !== "admin"
+              )
+                return;
               if (
                 item.path === "/import" &&
                 !["admin", "editor"].includes(user?.role || "")
