@@ -22,4 +22,13 @@ export class User {
 
   @Column({ nullable: true })
   image: string;
+
+  @Column({ nullable: true })
+  apiKeyHash: string;
+
+  @Column({ nullable: true })
+  apiKeyPreview: string;
+
+  @Column({ type: 'timestamp', nullable: true })
+  apiKeyCreatedAt: Date | null;
 }

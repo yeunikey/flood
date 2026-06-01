@@ -88,6 +88,9 @@ const sendDataToServer = async (
   const socket: Socket = io(socketUrl, {
     transports: ["websocket"],
     path: "/ws",
+    auth: {
+      token: useAuth.getState().token,
+    },
   });
 
   log("📡 Подключение к сокету...");

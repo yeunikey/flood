@@ -15,7 +15,7 @@ export class Variable {
   @Column()
   name: string;
 
-  @ManyToOne(() => Unit, { eager: true })
+  @ManyToOne(() => Unit)
   @JoinColumn({ name: 'unit_id' })
   unit: Unit;
 

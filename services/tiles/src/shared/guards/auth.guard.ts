@@ -11,6 +11,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 
 import { Request } from 'express';
+import type { JwtUser } from '../decorators/user.decorator';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -23,12 +24,20 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException();
     }
     try {
-      const payload = await this.jwtService.verifyAsync(token, {
+      const payload = await this.jwtService.verifyAsync<JwtUser>(token, {
         secret: process.env.JWT_SECRET,
       });
 
+      if (!payload.role) {
+        throw new UnauthorizedException();
+      }
+
       request['user'] = payload;
-    } catch {
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+
       throw new UnauthorizedException();
     }
     return true;
@@ -36,6 +45,9 @@ export class AuthGuard implements CanActivate {
 
   private extractTokenFromHeader(request: Request): string | undefined {
     const [type, token] = request.headers.authorization?.split(' ') ?? [];
-    return type === 'Bearer' ? token : undefined;
+    if (type === 'Bearer') return token;
+
+    const queryToken = request.query.token;
+    return typeof queryToken === 'string' ? queryToken : undefined;
   }
 }

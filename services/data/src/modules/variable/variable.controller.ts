@@ -6,14 +6,19 @@ import {
   Param,
   Body,
   ParseIntPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { VariableService } from './variable.service';
+import { AuthGuard } from 'src/shared/guards/auth.guard';
+import { EditorGuard } from 'src/shared/guards/editor.guard';
 
 @Controller('variables')
+@UseGuards(AuthGuard)
 export class VariableController {
   constructor(private readonly variableService: VariableService) {}
 
   @Post()
+  @UseGuards(EditorGuard)
   async createOrUseVariable(
     @Body()
     body: {
@@ -46,6 +51,7 @@ export class VariableController {
   }
 
   @Post('/variables/units')
+  @UseGuards(EditorGuard)
   async saveUnits(
     @Body() body: { name: string; symbol: string; description: string },
   ) {
@@ -53,6 +59,7 @@ export class VariableController {
   }
 
   @Delete(':id')
+  @UseGuards(EditorGuard)
   async remove(@Param('id', ParseIntPipe) id: number) {
     return this.variableService.remove(id);
   }

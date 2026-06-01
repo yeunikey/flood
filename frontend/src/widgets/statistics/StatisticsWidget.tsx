@@ -2,6 +2,7 @@
 
 import { useStatistics } from "@/features/statistics/model/useStatistics";
 import CategoryStatsTable from "@/features/statistics/ui/CategoryStatsTable";
+import ResourceStatsTables from "@/features/statistics/ui/ResourceStatsTables";
 import StatTile from "@/features/statistics/ui/StatTile";
 import CategoryIcon from "@mui/icons-material/Category";
 import DatasetIcon from "@mui/icons-material/Dataset";
@@ -19,6 +20,8 @@ import {
 export default function StatisticsWidget() {
   const {
     stats,
+    spatials,
+    hecRasProjects,
     loading,
     error,
     maxValuesCount,
@@ -114,6 +117,12 @@ export default function StatisticsWidget() {
         loading={loading && !stats}
         lastDataDate={lastDataDate}
         maxValuesCount={maxValuesCount}
+      />
+
+      <ResourceStatsTables
+        spatials={spatials}
+        hecRasProjects={hecRasProjects}
+        loading={loading && !stats}
       />
     </Box>
   );

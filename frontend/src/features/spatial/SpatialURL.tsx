@@ -4,13 +4,15 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { toast } from "react-toastify";
 import { useSpatialTiles } from "./model/useSpatialTiles";
 import { baseUrl } from "@/shared/model/api/instance";
+import { useAuth } from "@/shared/model/auth";
 
 function SpatialURL() {
   const { activeTileId } = useSpatialTiles();
+  const { token } = useAuth();
 
-  if (!activeTileId) return null;
+  if (!activeTileId || !token) return null;
 
-  const url = `${baseUrl}/tiles/server/${activeTileId}/{z}/{x}/{y}.pbf`;
+  const url = `${baseUrl}/tiles/server/${activeTileId}/{z}/{x}/{y}.pbf?token=${encodeURIComponent(token)}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(url);

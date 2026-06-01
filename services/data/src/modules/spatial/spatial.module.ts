@@ -4,12 +4,14 @@ import { join } from 'path';
 import { SpatialController } from './spatial.controller';
 import { TilesClient } from './grpc/tiles.client';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Spatial } from './entity/spatial.entity';
+import { Spatial } from './entities/spatial.entity';
 import { SpatialService } from './spatial.service';
+import { AuthGuard } from 'src/shared/guards/auth.guard';
+import { EditorGuard } from 'src/shared/guards/editor.guard';
 
 @Module({
   controllers: [SpatialController],
-  providers: [SpatialService, TilesClient],
+  providers: [SpatialService, TilesClient, AuthGuard, EditorGuard],
   imports: [
     TypeOrmModule.forFeature([Spatial]),
     ClientsModule.register([

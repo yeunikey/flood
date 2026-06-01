@@ -16,34 +16,28 @@ import CurrentUser from 'src/shared/decorators/user.decorator';
 import type { JwtUser } from 'src/shared/decorators/user.decorator';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
+import { AdminGuard } from '../auth/guards/admin.guard';
 
 @Controller('users')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, AdminGuard)
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Get()
-  async getAll(@CurrentUser() user: JwtUser) {
-    if (user.role !== 'admin')
-      throw new ForbiddenException('Только для админов');
+  async getAll() {
     return this.userService.getAllUsers();
   }
 
   @Post()
-  async create(@CurrentUser() user: JwtUser, @Body() dto: CreateUserDto) {
-    if (user.role !== 'admin')
-      throw new ForbiddenException('Только для админов');
+  async create(@Body() dto: CreateUserDto) {
     return this.userService.createUser(dto);
   }
 
   @Patch(':id/role')
   async updateRole(
-    @CurrentUser() user: JwtUser,
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateRoleDto,
   ) {
-    if (user.role !== 'admin')
-      throw new ForbiddenException('Только для админов');
     return this.userService.updateRole(id, dto.role);
   }
 
@@ -52,8 +46,6 @@ export class UserController {
     @CurrentUser() user: JwtUser,
     @Param('id', ParseIntPipe) id: number,
   ) {
-    if (user.role !== 'admin')
-      throw new ForbiddenException('Только для админов');
     if (user.id === id) throw new ForbiddenException('Нельзя удалить себя');
     return this.userService.deleteById(id);
   }

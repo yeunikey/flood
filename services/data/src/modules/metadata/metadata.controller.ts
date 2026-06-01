@@ -6,10 +6,14 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 import { MetadataService } from './metadata.service';
+import { AuthGuard } from 'src/shared/guards/auth.guard';
+import { EditorGuard } from 'src/shared/guards/editor.guard';
 
 @Controller('metadata')
+@UseGuards(AuthGuard)
 export class MetadataController {
   constructor(private readonly metadataService: MetadataService) {}
 
@@ -20,11 +24,13 @@ export class MetadataController {
   }
 
   @Post('sources')
+  @UseGuards(EditorGuard)
   async saveSource(@Body() body: { name: string }) {
     return this.metadataService.saveSource(body);
   }
 
   @Delete('sources/:id')
+  @UseGuards(EditorGuard)
   async removeSource(@Param('id', ParseIntPipe) id: number) {
     return this.metadataService.removeSource(id);
   }
@@ -36,11 +42,13 @@ export class MetadataController {
   }
 
   @Post('methods')
+  @UseGuards(EditorGuard)
   async saveMethod(@Body() body: { name: string; description?: string }) {
     return this.metadataService.saveMethod(body);
   }
 
   @Delete('methods/:id')
+  @UseGuards(EditorGuard)
   async removeMethod(@Param('id', ParseIntPipe) id: number) {
     return this.metadataService.removeMethod(id);
   }
@@ -52,11 +60,13 @@ export class MetadataController {
   }
 
   @Post('qcls')
+  @UseGuards(EditorGuard)
   async saveQcl(@Body() body: { name?: string; description?: string }) {
     return this.metadataService.saveQcl(body);
   }
 
   @Delete('qcls/:id')
+  @UseGuards(EditorGuard)
   async removeQcl(@Param('id', ParseIntPipe) id: number) {
     return this.metadataService.removeQcl(id);
   }

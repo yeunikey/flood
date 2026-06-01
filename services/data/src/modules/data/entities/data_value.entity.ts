@@ -17,11 +17,11 @@ export class DataValue {
   @Column({ nullable: true })
   value: string;
 
-  @ManyToOne(() => Group, (group) => group.dataValues, { eager: true })
+  @ManyToOne(() => Group, (group) => group.dataValues)
   @JoinColumn({ name: 'group_id' })
   group: Group;
 
-  @ManyToOne(() => Variable, { eager: true })
+  @ManyToOne(() => Variable)
   @JoinColumn({ name: 'variable_id' })
   variable: Variable;
 }

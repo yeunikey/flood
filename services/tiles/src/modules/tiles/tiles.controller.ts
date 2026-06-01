@@ -11,6 +11,7 @@ import {
   Get,
   Header,
   StreamableFile,
+  UseGuards,
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -21,12 +22,15 @@ import { existsSync, mkdirSync } from 'fs';
 import { Request } from 'express';
 import { CreateTileDto } from './dto/create-tile.dto';
 import { GrpcMethod } from '@nestjs/microservices';
+import { AuthGuard } from 'src/shared/guards/auth.guard';
+import { EditorGuard } from 'src/shared/guards/editor.guard';
 
 interface MulterRequest extends Request {
   body: Partial<CreateTileDto>;
 }
 
 @Controller('')
+@UseGuards(AuthGuard)
 export class TilesController {
   constructor(private readonly tilesService: TilesService) {}
 
@@ -52,6 +56,7 @@ export class TilesController {
   }
 
   @Post('upload')
+  @UseGuards(EditorGuard)
   @UseInterceptors(
     FileFieldsInterceptor([{ name: 'geo', maxCount: 1 }], {
       storage: diskStorage({
@@ -109,6 +114,7 @@ export class TilesController {
   }
 
   @Delete(':id')
+  @UseGuards(EditorGuard)
   async delete(@Param('id') id: string) {
     await this.tilesService.delete(id);
     return {

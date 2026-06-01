@@ -6,10 +6,14 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 import { SitesService } from './sites.service';
+import { AuthGuard } from 'src/shared/guards/auth.guard';
+import { EditorGuard } from 'src/shared/guards/editor.guard';
 
 @Controller('sites')
+@UseGuards(AuthGuard)
 export class SitesController {
   constructor(private readonly sitesService: SitesService) {}
 
@@ -20,11 +24,13 @@ export class SitesController {
   }
 
   @Post('types')
+  @UseGuards(EditorGuard)
   async saveSiteType(@Body() body: { name: string; description: string }) {
     return this.sitesService.saveSiteType(body);
   }
 
   @Delete('types/:id')
+  @UseGuards(EditorGuard)
   async removeSiteType(@Param('id', ParseIntPipe) id: number) {
     return this.sitesService.removeSiteType(id);
   }
@@ -36,6 +42,7 @@ export class SitesController {
   }
 
   @Post()
+  @UseGuards(EditorGuard)
   async saveSite(
     @Body()
     body: {
@@ -50,6 +57,7 @@ export class SitesController {
   }
 
   @Post('bulk')
+  @UseGuards(EditorGuard)
   async saveSites(
     @Body()
     body: {
@@ -64,6 +72,7 @@ export class SitesController {
   }
 
   @Delete(':id')
+  @UseGuards(EditorGuard)
   async removeSite(@Param('id', ParseIntPipe) id: number) {
     return this.sitesService.removeSite(id);
   }

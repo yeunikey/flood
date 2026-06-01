@@ -1,7 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-
 import {
   CanActivate,
   ExecutionContext,
@@ -11,24 +7,36 @@ import {
 import { JwtService } from '@nestjs/jwt';
 
 import { Request } from 'express';
+import type {
+  JwtUser,
+  RequestWithUser,
+} from 'src/shared/decorators/user.decorator';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
   constructor(private jwtService: JwtService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<RequestWithUser>();
     const token = this.extractTokenFromHeader(request);
     if (!token) {
       throw new UnauthorizedException();
     }
     try {
-      const payload = await this.jwtService.verifyAsync(token, {
+      const payload = await this.jwtService.verifyAsync<JwtUser>(token, {
         secret: process.env.JWT_SECRET,
       });
 
-      request['user'] = payload;
-    } catch {
+      if (!payload.role) {
+        throw new UnauthorizedException();
+      }
+
+      request.user = payload;
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+
       throw new UnauthorizedException();
     }
     return true;

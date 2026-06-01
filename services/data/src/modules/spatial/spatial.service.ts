@@ -2,9 +2,10 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateSpatialDto } from './dto/create-spatial.dto';
-import { Spatial, SpatialLegend } from './entity/spatial.entity';
+import { Spatial, SpatialLegend } from './entities/spatial.entity';
 import { TilesClient } from './grpc/tiles.client';
 import { Tile } from './grpc/tile.grpc';
+import type { SpatialStats } from '../data/types/data.types';
 
 @Injectable()
 export class SpatialService {
@@ -15,6 +16,14 @@ export class SpatialService {
     private spatialRepository: Repository<Spatial>,
     private tilesClient: TilesClient,
   ) {}
+
+  private async getTiles(tileIds?: string[] | null): Promise<Tile[]> {
+    if (!tileIds?.length) {
+      return [];
+    }
+
+    return this.tilesClient.getTilesByIds(tileIds);
+  }
 
   async create(dto: CreateSpatialDto) {
     const spatial = this.spatialRepository.create({
@@ -28,12 +37,10 @@ export class SpatialService {
     const savedSpatial = await this.spatialRepository.save(spatial);
 
     let tiles: Tile[] = [];
-    if (savedSpatial.tileIds && savedSpatial.tileIds.length > 0) {
-      try {
-        tiles = await this.tilesClient.getTilesByIds(savedSpatial.tileIds);
-      } catch (e) {
-        this.logger.error('Failed to fetch tiles during creation', e);
-      }
+    try {
+      tiles = await this.getTiles(savedSpatial.tileIds);
+    } catch (e) {
+      this.logger.error('Failed to fetch tiles during creation', e);
     }
 
     return {
@@ -50,15 +57,13 @@ export class SpatialService {
     const result = await Promise.all(
       spatials.map(async (spatial) => {
         let tiles: Tile[] = [];
-        if (spatial.tileIds && spatial.tileIds.length > 0) {
-          try {
-            tiles = await this.tilesClient.getTilesByIds(spatial.tileIds);
-          } catch (e) {
-            this.logger.error(
-              `Failed to fetch tiles for spatial ${spatial.id}`,
-              e,
-            );
-          }
+        try {
+          tiles = await this.getTiles(spatial.tileIds);
+        } catch (e) {
+          this.logger.error(
+            `Failed to fetch tiles for spatial ${spatial.id}`,
+            e,
+          );
         }
 
         return {
@@ -71,6 +76,74 @@ export class SpatialService {
     return result;
   }
 
+  async getStats(): Promise<SpatialStats> {
+    const [stats] = await this.spatialRepository.query<
+      {
+        total: string;
+        tiles: string;
+        withLegend: string;
+        linkedToPools: string;
+        solidStyle: string;
+        gradientStyle: string;
+      }[]
+    >(`
+      SELECT
+        COUNT(*)::int AS "total",
+        COALESCE(
+          SUM(
+            CASE
+              WHEN "tileIds" IS NULL OR "tileIds" = '' THEN 0
+              ELSE cardinality(string_to_array("tileIds", ','))
+            END
+          ),
+          0
+        )::int AS "tiles",
+        COUNT(*) FILTER (WHERE legend IS NOT NULL AND (legend->>'enabled')::boolean IS TRUE)::int AS "withLegend",
+        COUNT(*) FILTER (WHERE "poolId" IS NOT NULL)::int AS "linkedToPools",
+        COUNT(*) FILTER (WHERE style->>'type' = 'solid')::int AS "solidStyle",
+        COUNT(*) FILTER (WHERE style->>'type' = 'gradient')::int AS "gradientStyle"
+      FROM spatial
+    `);
+
+    return {
+      total: Number(stats?.total ?? 0),
+      tiles: Number(stats?.tiles ?? 0),
+      withLegend: Number(stats?.withLegend ?? 0),
+      linkedToPools: Number(stats?.linkedToPools ?? 0),
+      solidStyle: Number(stats?.solidStyle ?? 0),
+      gradientStyle: Number(stats?.gradientStyle ?? 0),
+    };
+  }
+
+  async getSummaryList() {
+    const spatials = await this.spatialRepository.find({
+      select: {
+        id: true,
+        name: true,
+        tileIds: true,
+        style: true,
+        legend: true,
+        pool: {
+          id: true,
+          name: true,
+        },
+      },
+      relations: {
+        pool: true,
+      },
+      order: { name: 'ASC' },
+    });
+
+    return spatials.map((spatial) => ({
+      id: spatial.id,
+      name: spatial.name,
+      tilesCount: spatial.tileIds?.length ?? 0,
+      styleType: spatial.style?.type ?? '',
+      legendEnabled: spatial.legend?.enabled ?? false,
+      poolName: spatial.pool?.name ?? null,
+    }));
+  }
+
   async findOne(id: number) {
     const spatial = await this.spatialRepository.findOne({
       where: { id },
@@ -80,12 +153,10 @@ export class SpatialService {
     if (!spatial) return null;
 
     let tilesData: Tile[] = [];
-    if (spatial.tileIds && spatial.tileIds.length > 0) {
-      try {
-        tilesData = await this.tilesClient.getTilesByIds(spatial.tileIds);
-      } catch (e) {
-        this.logger.error(`Failed to fetch tiles for spatial ${id}`, e);
-      }
+    try {
+      tilesData = await this.getTiles(spatial.tileIds);
+    } catch (e) {
+      this.logger.error(`Failed to fetch tiles for spatial ${id}`, e);
     }
 
     return {
@@ -123,12 +194,10 @@ export class SpatialService {
     const updatedSpatial = await this.spatialRepository.save(spatial);
 
     let tiles: Tile[] = [];
-    if (updatedSpatial.tileIds && updatedSpatial.tileIds.length > 0) {
-      try {
-        tiles = await this.tilesClient.getTilesByIds(updatedSpatial.tileIds);
-      } catch (e) {
-        this.logger.error(`Failed to fetch tiles for spatial ${id}`, e);
-      }
+    try {
+      tiles = await this.getTiles(updatedSpatial.tileIds);
+    } catch (e) {
+      this.logger.error(`Failed to fetch tiles for spatial ${id}`, e);
     }
 
     return {

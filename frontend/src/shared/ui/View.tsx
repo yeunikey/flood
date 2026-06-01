@@ -74,6 +74,17 @@ interface SearchOption {
 
 type NavItem = NonNullable<(typeof ways)[number]>;
 type NavGroup = NavItem[] | null;
+const adminOnlyPaths = ["/admin"];
+const editOnlyPaths = ["/import", "/parser"];
+
+function canViewNavItem(item: NavItem, role?: string) {
+  if (adminOnlyPaths.includes(item.path)) return role === "admin";
+  if (editOnlyPaths.includes(item.path)) {
+    return role === "admin" || role === "editor";
+  }
+
+  return true;
+}
 
 function View({ children, links, className }: ViewProps) {
   const theme = useTheme();
@@ -136,17 +147,7 @@ function View({ children, links, className }: ViewProps) {
     return ways
       .filter((item) => {
         if (item === null) return false;
-        if (
-          ["/admin", "/statistics", "/parser"].includes(item.path) &&
-          user?.role !== "admin"
-        )
-          return false;
-        if (
-          item.path === "/import" &&
-          !["admin", "editor"].includes(user?.role || "")
-        )
-          return false;
-        return true;
+        return canViewNavItem(item, user?.role);
       })
       .slice(0, 5) as NonNullable<(typeof ways)[number]>[];
   }, [user]);
@@ -175,16 +176,7 @@ function View({ children, links, className }: ViewProps) {
             }
             groups.push(null);
           } else {
-            if (
-              ["/admin", "/statistics", "/parser"].includes(item.path) &&
-              user?.role !== "admin"
-            )
-              return;
-            if (
-              item.path === "/import" &&
-              !["admin", "editor"].includes(user?.role || "")
-            )
-              return;
+            if (!canViewNavItem(item, user?.role)) return;
             currentGroup.push(item);
           }
         });
@@ -475,16 +467,7 @@ function View({ children, links, className }: ViewProps) {
               }
               groups.push(null);
             } else {
-              if (
-                ["/admin", "/statistics", "/parser"].includes(item.path) &&
-                user?.role !== "admin"
-              )
-                return;
-              if (
-                item.path === "/import" &&
-                !["admin", "editor"].includes(user?.role || "")
-              )
-                return;
+              if (!canViewNavItem(item, user?.role)) return;
               currentGroup.push(item);
             }
           });

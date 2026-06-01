@@ -1,8 +1,11 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { HydroParserService } from './hydro-parser.service';
 import { ImportHydroSiteDto } from './dto/hydro-parser.dto';
+import { AuthGuard } from 'src/shared/guards/auth.guard';
+import { EditorGuard } from 'src/shared/guards/editor.guard';
 
 @Controller('hydro')
+@UseGuards(AuthGuard, EditorGuard)
 export class HydroParserController {
   constructor(private readonly hydroParserService: HydroParserService) {}
 

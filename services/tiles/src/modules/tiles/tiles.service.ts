@@ -8,11 +8,10 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Tile } from './entities/tile.entity';
-import { join } from 'path';
-import { createReadStream, existsSync, mkdirSync, unlinkSync } from 'fs';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { TileserverService } from '../tileserver/tileserver.service';
+import { TileStorageService } from './services/tile-storage.service';
 
 const execAsync = promisify(exec);
 
@@ -24,17 +23,11 @@ export class TilesService implements OnModuleInit {
     @InjectRepository(Tile)
     private tilesRepository: Repository<Tile>,
     private tileserverService: TileserverService,
+    private readonly tileStorage: TileStorageService,
   ) {}
 
   onModuleInit() {
-    this.ensureDirectories();
-  }
-
-  private ensureDirectories() {
-    const mbDir = join(process.cwd(), 'uploads', 'mbtiles');
-    const geoDir = join(process.cwd(), 'uploads', 'geo');
-    if (!existsSync(mbDir)) mkdirSync(mbDir, { recursive: true });
-    if (!existsSync(geoDir)) mkdirSync(geoDir, { recursive: true });
+    this.tileStorage.ensureDirectories();
   }
 
   async createFromGeoJson(
@@ -42,12 +35,7 @@ export class TilesService implements OnModuleInit {
     meta: { id: string; name?: string },
   ): Promise<Tile> {
     const { id, name } = meta;
-    const mbtilesPath = join(
-      process.cwd(),
-      'uploads',
-      'mbtiles',
-      `${id}.mbtiles`,
-    );
+    const mbtilesPath = this.tileStorage.getMbtilesPath(id);
 
     const cmd = `tippecanoe -o "${mbtilesPath}" -S 10 -f -zg --drop-densest-as-needed "${fileData.path}"`;
 
@@ -85,12 +73,7 @@ export class TilesService implements OnModuleInit {
     }
 
     try {
-      if (tile.geoJsonPath && existsSync(tile.geoJsonPath)) {
-        unlinkSync(tile.geoJsonPath);
-      }
-      if (tile.mbtilesPath && existsSync(tile.mbtilesPath)) {
-        unlinkSync(tile.mbtilesPath);
-      }
+      this.tileStorage.deleteTileFiles(tile);
     } catch (error) {
       this.logger.error(`Error deleting files for tile ${id}`, error);
     }
@@ -115,11 +98,11 @@ export class TilesService implements OnModuleInit {
 
   async getGeoJsonStream(id: string) {
     const tile = await this.tilesRepository.findOne({ where: { id } });
-    if (!tile || !tile.geoJsonPath || !existsSync(tile.geoJsonPath)) {
+    if (!tile || !this.tileStorage.hasGeoJson(tile)) {
       throw new NotFoundException('GeoJSON file not found');
     }
     return {
-      stream: createReadStream(tile.geoJsonPath),
+      stream: this.tileStorage.createGeoJsonStream(tile),
       filename: `${tile.name || tile.id}.json`,
     };
   }

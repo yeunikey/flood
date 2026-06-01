@@ -6,6 +6,7 @@ import TimelineIcon from "@mui/icons-material/Timeline";
 import TravelExploreIcon from "@mui/icons-material/TravelExplore";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
+import DescriptionIcon from "@mui/icons-material/Description";
 
 const ways = [
   {
@@ -35,25 +36,31 @@ const ways = [
   },
   null,
   {
-    text: "Импорт данных",
-    icon: <AddToQueueIcon />,
-    path: "/import",
-  },
-  {
-    text: "Администрирование",
-    icon: <SupervisorAccountIcon />,
-    path: "/admin",
-  },
-  null,
-  {
     text: "Статистика",
     icon: <AssessmentIcon />,
     path: "/statistics",
   },
   {
+    text: "Документация",
+    icon: <DescriptionIcon />,
+    path: "/docs",
+  },
+  null,
+  {
+    text: "Импорт данных",
+    icon: <AddToQueueIcon />,
+    path: "/import",
+  },
+  {
     text: "Парсер гидропостов",
     icon: <CloudDownloadIcon />,
     path: "/parser",
+  },
+  null,
+  {
+    text: "Администрирование",
+    icon: <SupervisorAccountIcon />,
+    path: "/admin",
   },
 ];
 

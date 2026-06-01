@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import { createHash, randomBytes } from 'crypto';
 import { User, UserRole } from './entities/user.entity';
 import { UserUpdateDto } from './dto/user-update.dto';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -16,7 +17,7 @@ export class UserService {
   toSafeUser(user: User | null) {
     if (!user) return null;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password, ...rest } = user;
+    const { password, apiKeyHash, ...rest } = user;
     return rest;
   }
 
@@ -68,5 +69,34 @@ export class UserService {
   async updateProfile(id: number, dto: UserUpdateDto) {
     await this.userRepository.update(id, dto);
     return this.toSafeUser(await this.findByIdSafe(id));
+  }
+
+  async getApiKeyInfo(id: number) {
+    const user = await this.findByIdSafe(id);
+
+    return {
+      hasApiKey: Boolean(user?.apiKeyHash),
+      preview: user?.apiKeyPreview ?? null,
+      createdAt: user?.apiKeyCreatedAt?.toISOString() ?? null,
+    };
+  }
+
+  async regenerateApiKey(id: number) {
+    const apiKey = `fld_${randomBytes(32).toString('base64url')}`;
+    const apiKeyHash = createHash('sha256').update(apiKey).digest('hex');
+    const apiKeyPreview = `${apiKey.slice(0, 8)}...${apiKey.slice(-6)}`;
+    const apiKeyCreatedAt = new Date();
+
+    await this.userRepository.update(id, {
+      apiKeyHash,
+      apiKeyPreview,
+      apiKeyCreatedAt,
+    });
+
+    return {
+      apiKey,
+      preview: apiKeyPreview,
+      createdAt: apiKeyCreatedAt.toISOString(),
+    };
   }
 }

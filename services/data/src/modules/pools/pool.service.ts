@@ -4,7 +4,7 @@ import { In, Repository } from 'typeorm';
 import { Pool } from './entities/pool.entity';
 import type { FeatureCollection } from 'geojson';
 import { Site } from '../sites/entities/site';
-import { Spatial } from '../spatial/entity/spatial.entity';
+import { Spatial } from '../spatial/entities/spatial.entity';
 
 @Injectable()
 export class PoolService {
@@ -21,14 +21,14 @@ export class PoolService {
 
   async findAll() {
     return this.poolRepository.find({
-      relations: ['sites', 'spatials'],
+      relations: ['sites', 'sites.siteType', 'spatials'],
     });
   }
 
   async findById(id: number) {
     return this.poolRepository.findOne({
       where: { id },
-      relations: ['sites', 'spatials'],
+      relations: ['sites', 'sites.siteType', 'spatials'],
     });
   }
 

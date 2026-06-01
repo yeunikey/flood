@@ -1,4 +1,5 @@
 import {
+  IsIn,
   IsString,
   IsNumber,
   IsOptional,
@@ -8,7 +9,7 @@ import { GradientConfigDto } from './gradient-config.dto';
 import { Type } from '@nestjs/class-transformer';
 
 export class SpatialStyleDto {
-  @IsString()
+  @IsIn(['solid', 'gradient'])
   type: 'solid' | 'gradient';
 
   @IsString()

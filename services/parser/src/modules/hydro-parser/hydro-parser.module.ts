@@ -14,6 +14,8 @@ import {
   Unit,
   Variable,
 } from './entities/hydro-parser.entities';
+import { AuthGuard } from 'src/shared/guards/auth.guard';
+import { EditorGuard } from 'src/shared/guards/editor.guard';
 
 @Module({
   imports: [
@@ -31,6 +33,6 @@ import {
     ]),
   ],
   controllers: [HydroParserController],
-  providers: [HydroParserService],
+  providers: [HydroParserService, AuthGuard, EditorGuard],
 })
 export class HydroParserModule {}

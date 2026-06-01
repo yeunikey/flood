@@ -238,7 +238,9 @@ export default function UpdateSpatialModal({
     } else if (previewType === "existing" && previewId) {
       sourceData = {
         type: "vector",
-        tiles: [`${baseUrl}/tiles/server/${previewId}/{z}/{x}/{y}.pbf`],
+        tiles: [
+          `${baseUrl}/tiles/server/${previewId}/{z}/{x}/{y}.pbf?token=${encodeURIComponent(token ?? "")}`,
+        ],
         minzoom: 0,
         maxzoom: 14,
       };
@@ -370,6 +372,7 @@ export default function UpdateSpatialModal({
     maxColor,
     gradientVar,
     mapInstance,
+    token,
   ]);
 
   const addLegendItem = () => {

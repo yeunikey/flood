@@ -10,6 +10,7 @@ import {
   Res,
   ParseIntPipe,
   Delete,
+  Logger,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { HecRasService } from './hec-ras.service';
@@ -23,11 +24,18 @@ if (!existsSync(tempUploadDir)) mkdirSync(tempUploadDir, { recursive: true });
 
 @Controller('hec-ras')
 export class HecRasController {
+  private readonly logger = new Logger(HecRasController.name);
+
   constructor(private readonly service: HecRasService) {}
 
   @Get('')
   getAllProjects() {
     return this.service.getAllProjects();
+  }
+
+  @Get('stats')
+  getStats() {
+    return this.service.getStats();
   }
 
   @Post('upload')
@@ -70,7 +78,7 @@ export class HecRasController {
     @Param('x', ParseIntPipe) x: number,
     @Param('y') yStr: string,
     @Query('time') time: string,
-    @Query('tms') tms: string, // Получаем как строку, т.к. Query boolean иногда глючит без Pipe
+    @Query('tms') tms: string,
     @Res() res: Response,
   ) {
     const y = parseInt(yStr.replace('.png', ''), 10);
@@ -89,9 +97,8 @@ export class HecRasController {
       res.setHeader('Content-Type', 'image/png');
       res.setHeader('Cache-Control', 'public, max-age=31536000');
       res.send(tile);
-    } catch (e) {
-      console.error(e);
-      // Возвращаем прозрачный тайл вместо 500 ошибки, чтобы карта не мигала "битыми" картинками
+    } catch (error) {
+      this.logger.error('Failed to render HEC-RAS tile', error);
       res.setHeader('Content-Type', 'image/png');
       res.send(this.service.getTransparentTile());
     }

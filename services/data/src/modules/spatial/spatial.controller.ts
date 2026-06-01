@@ -7,15 +7,20 @@ import {
   ParseIntPipe,
   HttpStatus,
   Delete,
+  UseGuards,
 } from '@nestjs/common';
 import { SpatialService } from './spatial.service';
 import { CreateSpatialDto } from './dto/create-spatial.dto';
+import { AuthGuard } from 'src/shared/guards/auth.guard';
+import { EditorGuard } from 'src/shared/guards/editor.guard';
 
 @Controller('spatial')
+@UseGuards(AuthGuard)
 export class SpatialController {
   constructor(private readonly spatialService: SpatialService) {}
 
   @Post()
+  @UseGuards(EditorGuard)
   async create(@Body() createSpatialDto: CreateSpatialDto) {
     return {
       status: HttpStatus.OK,
@@ -31,6 +36,22 @@ export class SpatialController {
     };
   }
 
+  @Get('stats')
+  async getStats() {
+    return {
+      status: HttpStatus.OK,
+      data: await this.spatialService.getStats(),
+    };
+  }
+
+  @Get('summary')
+  async getSummaryList() {
+    return {
+      status: HttpStatus.OK,
+      data: await this.spatialService.getSummaryList(),
+    };
+  }
+
   @Get(':id')
   async findOne(@Param('id', ParseIntPipe) id: number) {
     return {
@@ -40,6 +61,7 @@ export class SpatialController {
   }
 
   @Delete(':id')
+  @UseGuards(EditorGuard)
   async remove(@Param('id', ParseIntPipe) id: number) {
     return {
       status: HttpStatus.OK,
@@ -48,6 +70,7 @@ export class SpatialController {
   }
 
   @Post(':id')
+  @UseGuards(EditorGuard)
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateSpatialDto: CreateSpatialDto,

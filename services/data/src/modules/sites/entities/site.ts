@@ -20,7 +20,7 @@ export class Site {
   @Column()
   name: string;
 
-  @ManyToOne(() => SiteType, { eager: true })
+  @ManyToOne(() => SiteType)
   @JoinColumn({ name: 'site_type_id' })
   siteType: SiteType;
 

@@ -3,7 +3,7 @@ import { Request } from 'express';
 
 type JwtUser = {
   id: number;
-  roles: string[];
+  role: 'viewer' | 'editor' | 'admin';
 };
 
 export interface RequestWithUser extends Request {

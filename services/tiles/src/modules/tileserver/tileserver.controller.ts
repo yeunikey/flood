@@ -5,11 +5,14 @@ import {
   Res,
   Header,
   NotFoundException,
+  UseGuards,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { TileserverService } from './tileserver.service';
+import { AuthGuard } from 'src/shared/guards/auth.guard';
 
 @Controller('server')
+@UseGuards(AuthGuard)
 export class TileserverController {
   constructor(private readonly tilesService: TileserverService) {}
 

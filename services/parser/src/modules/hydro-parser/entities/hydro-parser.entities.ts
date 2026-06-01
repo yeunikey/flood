@@ -30,7 +30,7 @@ export class Site {
   @Column()
   name: string;
 
-  @ManyToOne(() => SiteType, { eager: true })
+  @ManyToOne(() => SiteType)
   @JoinColumn({ name: 'site_type_id' })
   siteType: SiteType;
 
@@ -109,7 +109,7 @@ export class Variable {
   @Column()
   name: string;
 
-  @ManyToOne(() => Unit, { eager: true })
+  @ManyToOne(() => Unit)
   @JoinColumn({ name: 'unit_id' })
   unit: Unit;
 
@@ -125,23 +125,23 @@ export class Group {
   @Column({ type: 'timestamp' })
   date_utc: Date;
 
-  @ManyToOne(() => Category, { eager: true })
+  @ManyToOne(() => Category)
   @JoinColumn({ name: 'category_id' })
   category: Category;
 
-  @ManyToOne(() => Site, { eager: true })
+  @ManyToOne(() => Site)
   @JoinColumn({ name: 'site_id' })
   site: Site;
 
-  @ManyToOne(() => MethodType, { eager: true })
+  @ManyToOne(() => MethodType)
   @JoinColumn({ name: 'method_id' })
   method: MethodType;
 
-  @ManyToOne(() => DataSourceEntity, { eager: true })
+  @ManyToOne(() => DataSourceEntity)
   @JoinColumn({ name: 'source_id' })
   source: DataSourceEntity;
 
-  @ManyToOne(() => Qcl, { eager: true, nullable: true })
+  @ManyToOne(() => Qcl, { nullable: true })
   @JoinColumn({ name: 'qcl' })
   qcl: Qcl;
 
@@ -163,7 +163,7 @@ export class DataValue {
   @JoinColumn({ name: 'group_id' })
   group: Group;
 
-  @ManyToOne(() => Variable, { eager: true })
+  @ManyToOne(() => Variable)
   @JoinColumn({ name: 'variable_id' })
   variable: Variable;
 }

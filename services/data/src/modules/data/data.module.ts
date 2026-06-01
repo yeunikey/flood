@@ -2,6 +2,11 @@ import { Category } from './entities/category.entity';
 import { DataController } from './data.controller';
 import { DataGateway } from './data.gateway';
 import { DataService } from './data.service';
+import { DataCacheService } from './services/data-cache.service';
+import { DataExportService } from './services/data-export.service';
+import { DataImportService } from './services/data-import.service';
+import { DataQueryService } from './services/data-query.service';
+import { DataStatsService } from './services/data-stats.service';
 import { DataSource } from '../metadata/entities/data_source.entity';
 import { DataValue } from './entities/data_value.entity';
 import { Group } from './entities/group';
@@ -14,10 +19,23 @@ import { Variable } from '../variable/entities/variable.entity';
 import { VariableController } from '../variable/variable.controller';
 import { VariableService } from '../variable/variable.service';
 import { SitesModule } from '../sites/sites.module';
+import { AuthGuard } from 'src/shared/guards/auth.guard';
+import { EditorGuard } from 'src/shared/guards/editor.guard';
 
 @Module({
   controllers: [DataController, VariableController],
-  providers: [DataService, VariableService, DataGateway],
+  providers: [
+    DataService,
+    DataCacheService,
+    DataExportService,
+    DataImportService,
+    DataQueryService,
+    DataStatsService,
+    VariableService,
+    DataGateway,
+    AuthGuard,
+    EditorGuard,
+  ],
   imports: [
     TypeOrmModule.forFeature([
       Category,

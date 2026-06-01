@@ -1,10 +1,10 @@
 import { Pool } from 'src/modules/pools/entities/pool.entity';
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
-  ManyToOne,
+  Entity,
   JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
 } from 'typeorm';
 
 export interface SpatialStyle {

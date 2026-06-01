@@ -25,3 +25,38 @@ export interface DataStats {
   groups: number;
   byCategory: CategoryStats[];
 }
+
+export interface SpatialStats {
+  total: number;
+  tiles: number;
+  withLegend: number;
+  linkedToPools: number;
+  solidStyle: number;
+  gradientStyle: number;
+}
+
+export interface HecRasStats {
+  total: number;
+  latestProject: {
+    id: string;
+    name: string;
+    originalFilename: string;
+    createdAt: string;
+  } | null;
+}
+
+export interface SpatialListItem {
+  id: number;
+  name: string;
+  tilesCount: number;
+  styleType: "solid" | "gradient" | string;
+  legendEnabled: boolean;
+  poolName: string | null;
+}
+
+export interface HecRasListItem {
+  id: string;
+  name: string;
+  originalFilename: string;
+  createdAt: string;
+}

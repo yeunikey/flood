@@ -22,23 +22,23 @@ export class Group {
   @Column({ type: 'timestamp' })
   date_utc: Date;
 
-  @ManyToOne(() => Category, { eager: true })
+  @ManyToOne(() => Category)
   @JoinColumn({ name: 'category_id' })
   category: Category;
 
-  @ManyToOne(() => Site, { eager: true })
+  @ManyToOne(() => Site)
   @JoinColumn({ name: 'site_id' })
   site: Site;
 
-  @ManyToOne(() => MethodType, { eager: true })
+  @ManyToOne(() => MethodType)
   @JoinColumn({ name: 'method_id' })
   method: MethodType;
 
-  @ManyToOne(() => DataSource, { eager: true })
+  @ManyToOne(() => DataSource)
   @JoinColumn({ name: 'source_id' })
   source: DataSource;
 
-  @ManyToOne(() => Qcl, { eager: true, nullable: true })
+  @ManyToOne(() => Qcl, { nullable: true })
   @JoinColumn({ name: 'qcl' })
   qcl: Qcl;
 

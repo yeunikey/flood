@@ -56,7 +56,9 @@ export const SpatialSettings = () => {
     }
   };
 
-  const url = `${baseUrl}/tiles/server/${activeTileId}/{z}/{x}/{y}.pbf`;
+  const url = activeTileId
+    ? `${baseUrl}/tiles/server/${activeTileId}/{z}/{x}/{y}.pbf?token=${encodeURIComponent(token ?? "")}`
+    : "";
 
   const handleCopy = () => {
     navigator.clipboard.writeText(url);

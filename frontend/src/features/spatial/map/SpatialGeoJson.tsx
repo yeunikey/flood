@@ -11,6 +11,7 @@ import {
 } from "mapbox-gl";
 import { useSpatialSettings } from "../model/useSpatialSettings";
 import { baseUrl } from "@/shared/model/api/instance";
+import { useAuth } from "@/shared/model/auth";
 
 type FillColorExpression = string | (string | number | string[])[];
 
@@ -33,6 +34,7 @@ function SpatialGeoJson() {
   const { map } = useSpatialMap();
   const { activeSpatial, activeTileId } = useSpatialTiles();
   const { tooltipEnabled } = useSpatialSettings();
+  const { token } = useAuth();
   const popupRef = useRef<Popup | null>(null);
 
   const findMinMax = async (tileJSONUrl: string, variable: string) => {
@@ -62,7 +64,7 @@ function SpatialGeoJson() {
   };
 
   useEffect(() => {
-    if (!map || !activeSpatial || !activeTileId) return;
+    if (!map || !activeSpatial || !activeTileId || !token) return;
 
     let isMounted = true;
     const sourceId = "spatial-source";
@@ -98,7 +100,7 @@ function SpatialGeoJson() {
           let max = 100;
 
           const stats = await findMinMax(
-            `${baseUrl}/tiles/server/${activeTileId}.json`,
+            `${baseUrl}/tiles/server/${activeTileId}.json?token=${encodeURIComponent(token)}`,
             variable,
           );
 
@@ -192,7 +194,9 @@ function SpatialGeoJson() {
         if (!map.getSource(sourceId)) {
           map.addSource(sourceId, {
             type: "vector",
-            tiles: [`${baseUrl}/tiles/server/${activeTileId}/{z}/{x}/{y}.pbf`],
+            tiles: [
+              `${baseUrl}/tiles/server/${activeTileId}/{z}/{x}/{y}.pbf?token=${encodeURIComponent(token)}`,
+            ],
             minzoom: 0,
             maxzoom: 14,
           });
@@ -308,7 +312,7 @@ function SpatialGeoJson() {
       const el = document.getElementById(styleId);
       if (el) el.remove();
     };
-  }, [map, activeSpatial, activeTileId, tooltipEnabled]);
+  }, [map, activeSpatial, activeTileId, tooltipEnabled, token]);
 
   return null;
 }

@@ -50,7 +50,9 @@ export class SitesService {
   async findAllSites() {
     return {
       statusCode: HttpStatus.OK,
-      data: await this.siteRepo.find(),
+      data: await this.siteRepo.find({
+        relations: ['siteType'],
+      }),
     };
   }
 

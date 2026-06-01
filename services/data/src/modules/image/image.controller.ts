@@ -8,15 +8,20 @@ import {
   BadRequestException,
   NotFoundException,
   StreamableFile,
+  UseGuards,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ImageService } from './image.service';
+import { AuthGuard } from 'src/shared/guards/auth.guard';
+import { EditorGuard } from 'src/shared/guards/editor.guard';
 
 @Controller('images')
+@UseGuards(AuthGuard)
 export class ImageController {
   constructor(private readonly imageService: ImageService) {}
 
   @Post('upload')
+  @UseGuards(EditorGuard)
   @UseInterceptors(FileInterceptor('file'))
   async upload(@UploadedFile() file: Express.Multer.File) {
     return {

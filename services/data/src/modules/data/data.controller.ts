@@ -2,35 +2,39 @@ import {
   Body,
   Controller,
   Get,
-  Param,
-  Post,
-  HttpStatus,
-  Query,
-  Inject,
   Header,
+  HttpStatus,
   NotFoundException,
-  StreamableFile,
+  Param,
+  ParseIntPipe,
+  Post,
+  Query,
   Res,
+  StreamableFile,
+  UseGuards,
 } from '@nestjs/common';
 import { DataService } from './data.service';
-import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
 import { encodeGetResponse, encodePaginatedResponse } from './proto/data.pb';
 import type { Response } from 'express';
+import { CreateCategoryDto } from './dto/create-category.dto';
+import {
+  CategoryVariablesQueryDto,
+  DatePaginationQueryDto,
+  PaginationQueryDto,
+} from './dto/data-query.dto';
+import { ExportCsvDto } from './dto/export-csv.dto';
+import { message, ok } from 'src/shared/utils/api-response';
+import { AuthGuard } from 'src/shared/guards/auth.guard';
+import { EditorGuard } from 'src/shared/guards/editor.guard';
 
 @Controller('')
+@UseGuards(AuthGuard)
 export class DataController {
-  constructor(
-    private readonly dataService: DataService,
-
-    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
-  ) {}
+  constructor(private readonly dataService: DataService) {}
 
   @Get('category')
   async getAllCategory() {
-    return {
-      statusCode: 200,
-      data: await this.dataService.getAllCategories(),
-    };
+    return ok(await this.dataService.getAllCategories());
   }
 
   @Get('category/sites')
@@ -47,122 +51,71 @@ export class DataController {
       }),
     );
 
-    return {
-      statusCode: 200,
-      data: results,
-    };
+    return ok(results);
   }
 
   @Get('category/:id/sites')
-  async getSitesByCategory(@Param('id') categoryId: number) {
-    const cached = await this.cacheManager.get(
-      `categories-sites:${categoryId}`,
-    );
-
-    if (cached) {
-      return cached;
-    }
-
-    const [category, sites] = await Promise.all([
-      this.dataService.findCategoryById(categoryId),
-      this.dataService.findSitesByCategoryId(categoryId),
-    ]);
-
-    const result = {
-      category,
-      sites,
-    };
-
-    await this.cacheManager.set(
-      `categories-sites:${categoryId}`,
-      result,
-      60 * 60 * 1000,
-    );
-
-    return result;
+  async getSitesByCategory(@Param('id', ParseIntPipe) categoryId: number) {
+    return this.dataService.findCategorySites(categoryId);
   }
 
   @Get('groups')
   async getAllGroups() {
-    return {
-      statusCode: 200,
-      data: await this.dataService.getAllGroup(),
-    };
+    return ok(await this.dataService.getAllGroup());
   }
 
   @Get('stats')
   async getStats() {
-    return {
-      statusCode: 200,
-      data: await this.dataService.getStats(),
-    };
+    return ok(await this.dataService.getStats());
   }
 
   @Post('category')
-  async createCategory(@Body() body: { name: string; description: string }) {
-    return {
-      statusCode: 200,
-      data: await this.dataService.createCategory(body),
-    };
+  @UseGuards(EditorGuard)
+  async createCategory(@Body() body: CreateCategoryDto) {
+    return ok(await this.dataService.createCategory(body));
   }
 
   @Get('category/:id/variables')
   async categoryVariables(
-    @Param('id') categoryId: number,
-    @Query('sourceId') sourceId?: string,
-    @Query('siteCode') siteCode?: string,
+    @Param('id', ParseIntPipe) categoryId: number,
+    @Query() query: CategoryVariablesQueryDto,
   ) {
     const category = await this.dataService.findCategoryById(categoryId);
 
     if (!category) {
-      return {
-        statusCode: HttpStatus.NOT_FOUND,
-        message: 'Категория не найдена',
-      };
+      return message('Категория не найдена', HttpStatus.NOT_FOUND);
     }
 
-    const parsedSourceId = sourceId ? parseInt(sourceId) : undefined;
-
-    return {
-      statusCode: 200,
-      data: await this.dataService.getVariablesByCategory(
+    return ok(
+      await this.dataService.getVariablesByCategory(
         categoryId,
-        parsedSourceId,
-        siteCode,
+        query.sourceId,
+        query.siteCode,
       ),
-    };
+    );
   }
 
   @Get('category/:id/values')
-  async getByCategoryValues(@Param('id') id: number) {
+  async getByCategoryValues(@Param('id', ParseIntPipe) id: number) {
     const result = await this.dataService.findDataByCategoryId(id);
 
-    return {
-      statusCode: 200,
-      data: result,
-    };
+    return ok(result);
   }
 
   @Get('datavalue/:id')
-  async getById(@Param('id') id: number) {
+  async getById(@Param('id', ParseIntPipe) id: number) {
     const result = await this.dataService.findById(id);
 
     if (!result) {
-      return {
-        statusCode: HttpStatus.NOT_FOUND,
-        message: 'Таких данных не существует',
-      };
+      return message('Таких данных не существует', HttpStatus.NOT_FOUND);
     }
 
-    return {
-      statusCode: 200,
-      data: result,
-    };
+    return ok(result);
   }
 
   @Get('category/:id/by-site/:siteCode')
   async getByCategoryAndSiteCode(
-    @Param('id') categoryId: number,
+    @Param('id', ParseIntPipe) categoryId: number,
     @Param('siteCode') siteCode: string,
   ) {
     const result = await this.dataService.findGroupsByCategoryAndSiteCode(
@@ -170,112 +123,42 @@ export class DataController {
       siteCode,
     );
 
-    return {
-      statusCode: 200,
-      data: result,
-    };
+    return ok(result);
   }
 
   @Get('category/:id/by-site/:siteCode/paginated')
   async getByCategoryAndSiteCodePagniated(
-    @Param('id') categoryId: number,
+    @Param('id', ParseIntPipe) categoryId: number,
     @Param('siteCode') siteCode: string,
-    @Query('page') page = '1',
-    @Query('limit') limit = '20',
-    @Query('sourceId') sourceId?: string,
+    @Query() query: PaginationQueryDto,
   ) {
-    const pageNumber = Number(page) || 1;
-    const limitNumber = Number(limit) || 20;
-    const parsedSourceId = sourceId ? parseInt(sourceId) : undefined;
-
     const result =
       await this.dataService.findGroupsByCategoryAndSiteCodePaginated(
         categoryId,
         siteCode,
         {
-          page: pageNumber,
-          limit: limitNumber,
-          sourceId: parsedSourceId,
+          page: query.page,
+          limit: query.limit,
+          sourceId: query.sourceId,
         },
       );
 
-    return {
-      statusCode: 200,
-      data: result,
-    };
+    return ok(result);
   }
 
-  // @Get('category/:id/by-site/:siteCode/by-date')
-  // async getByCategoryAndSiteCodeByDate(
-  //   @Param('id') categoryId: number,
-  //   @Param('siteCode') siteCode: string,
-  //   @Query('start') start?: string,
-  //   @Query('end') end?: string,
-  //   @Query('sourceId') sourceId?: string,
-  // ) {
-  //   const parsedSourceId = sourceId ? parseInt(sourceId) : undefined;
-
-  //   const result = await this.dataService.findGroupsByCategoryAndSiteCodeByDate(
-  //     categoryId,
-  //     siteCode,
-  //     start ? new Date(start) : undefined,
-  //     end ? new Date(end) : undefined,
-  //     parsedSourceId,
-  //   );
-
-  //   return {
-  //     statusCode: 200,
-  //     ...result,
-  //   };
-  // }
-
-  // @Get('category/:id/by-site/:siteCode/by-date')
-  // @Header('Content-Type', 'application/x-protobuf')
-  // async getByCategoryAndSiteCodeByDate(
-  //   @Param('id') categoryId: number,
-  //   @Param('siteCode') siteCode: string,
-  //   @Query('start') start?: string,
-  //   @Query('end') end?: string,
-  //   @Query('sourceId') sourceId?: string,
-  // ): Promise<Uint8Array> {
-  //   const parsedSourceId = sourceId ? parseInt(sourceId, 10) : undefined;
-
-  //   const result = await this.dataService.findGroupsByCategoryAndSiteCodeByDate(
-  //     categoryId,
-  //     siteCode,
-  //     start ? new Date(start) : undefined,
-  //     end ? new Date(end) : undefined,
-  //     parsedSourceId,
-  //   );
-
-  //   const payload = {
-  //     statusCode: 200,
-  //     groups: result!.groups,
-  //     startDate: result!.startDate?.toISOString() ?? '',
-  //     endDate: result!.endDate?.toISOString() ?? '',
-  //     allDates: result!.allDates,
-  //   };
-
-  //   return encodeGetResponse(payload);
-  // }
-
   @Get('category/:id/by-site/:siteCode/by-date')
-  @Header('Content-Type', 'application/x-protobuf')
+  @Header('Content-Type', 'application/x-proto')
   async getByCategoryAndSiteCodeByDate(
-    @Param('id') categoryId: number,
+    @Param('id', ParseIntPipe) categoryId: number,
     @Param('siteCode') siteCode: string,
-    @Query('start') start?: string,
-    @Query('end') end?: string,
-    @Query('sourceId') sourceId?: string,
+    @Query() query: DatePaginationQueryDto,
   ) {
-    const parsedSourceId = sourceId ? parseInt(sourceId, 10) : undefined;
-
     const result = await this.dataService.findGroupsByCategoryAndSiteCodeByDate(
       categoryId,
       siteCode,
-      start ? new Date(start) : undefined,
-      end ? new Date(end) : undefined,
-      parsedSourceId,
+      query.start ? new Date(query.start) : undefined,
+      query.end ? new Date(query.end) : undefined,
+      query.sourceId,
     );
 
     if (!result) {
@@ -300,30 +183,22 @@ export class DataController {
   }
 
   @Get('category/:id/by-site/:siteCode/paginated-date')
-  @Header('Content-Type', 'application/x-protobuf')
+  @Header('Content-Type', 'application/x-proto')
   async getByCategoryAndSiteCodePaginatedWithDate(
-    @Param('id') categoryId: number,
+    @Param('id', ParseIntPipe) categoryId: number,
     @Param('siteCode') siteCode: string,
-    @Query('page') page = '1',
-    @Query('limit') limit = '20',
-    @Query('start') start?: string,
-    @Query('end') end?: string,
-    @Query('sourceId') sourceId?: string,
+    @Query() query: DatePaginationQueryDto,
   ) {
-    const pageNumber = Number(page) || 1;
-    const limitNumber = Number(limit) || 20;
-    const parsedSourceId = sourceId ? parseInt(sourceId, 10) : undefined;
-
     const payload =
       await this.dataService.findGroupsByCategoryAndSiteCodePaginatedWithDate(
         categoryId,
         siteCode,
         {
-          page: pageNumber,
-          limit: limitNumber,
-          start: start ? new Date(start) : undefined,
-          end: end ? new Date(end) : undefined,
-          sourceId: parsedSourceId,
+          page: query.page,
+          limit: query.limit,
+          start: query.start ? new Date(query.start) : undefined,
+          end: query.end ? new Date(query.end) : undefined,
+          sourceId: query.sourceId,
         },
       );
 
@@ -336,8 +211,8 @@ export class DataController {
 
   @Post('category/:id/export/csv')
   async exportCsv(
-    @Param('id') categoryId: number,
-    @Body() body: { siteCode: string; startDate?: string; endDate?: string },
+    @Param('id', ParseIntPipe) categoryId: number,
+    @Body() body: ExportCsvDto,
     @Res() res: Response,
   ) {
     const csvData = await this.dataService.generateCsv(
@@ -354,58 +229,4 @@ export class DataController {
     );
     res.send(csvData);
   }
-
-  // @Get('category/:id/by-site/:siteCode/paginated-date')
-  // async getByCategoryAndSiteCodePaginatedWithDate(
-  //   @Param('id') categoryId: number,
-  //   @Param('siteCode') siteCode: string,
-  //   @Query('page') page = '1',
-  //   @Query('limit') limit = '20',
-  //   @Query('start') start?: string,
-  //   @Query('end') end?: string,
-  //   @Query('sourceId') sourceId?: string,
-  // ) {
-  //   const pageNumber = Number(page) || 1;
-  //   const limitNumber = Number(limit) || 20;
-  //   const parsedSourceId = sourceId ? parseInt(sourceId) : undefined;
-
-  //   const result =
-  //     await this.dataService.findGroupsByCategoryAndSiteCodePaginatedWithDate(
-  //       categoryId,
-  //       siteCode,
-  //       {
-  //         page: pageNumber,
-  //         limit: limitNumber,
-  //         start: start ? new Date(start) : undefined,
-  //         end: end ? new Date(end) : undefined,
-  //         sourceId: parsedSourceId,
-  //       },
-  //     );
-
-  //   return {
-  //     statusCode: 200,
-  //     data: result,
-  //   };
-  // }
-
-  // @Post('category/:id/export/csv')
-  // async exportCsv(
-  //   @Param('id') categoryId: number,
-  //   @Body() body: { siteCode: string; startDate?: string; endDate?: string },
-  //   @Res() res: Response,
-  // ) {
-  //   const csvData = await this.dataService.generateCsv(
-  //     categoryId,
-  //     body.siteCode,
-  //     body.startDate ? new Date(body.startDate) : undefined,
-  //     body.endDate ? new Date(body.endDate) : undefined,
-  //   );
-
-  //   res.setHeader('Content-Type', 'text/csv');
-  //   res.setHeader(
-  //     'Content-Disposition',
-  //     `attachment; filename=export_${body.siteCode}.csv`,
-  //   );
-  //   res.send(csvData);
-  // }
 }
